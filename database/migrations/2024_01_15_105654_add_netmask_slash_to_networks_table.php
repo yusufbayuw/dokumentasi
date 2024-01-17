@@ -24,7 +24,7 @@ return new class extends Migration
     {
         Schema::table('networks', function (Blueprint $table) {
             $table->dropColumn('netmask_original');
-            $table->dropColumn('netmask');
+            //$table->dropColumn('netmask');
         });
     }
 };

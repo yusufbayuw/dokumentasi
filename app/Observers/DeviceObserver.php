@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Device;
 use App\Models\IpAddress;
+use App\Models\Topology;
 
 class DeviceObserver
 {
@@ -12,9 +13,15 @@ class DeviceObserver
      */
     public function created(Device $device): void
     {
-        $ipSet = IpAddress::find($device->ip_address_id);
-        $ipSet->booked = true;
-        $ipSet->save();
+        if ($device->ip_address_id){
+            $ipSet = IpAddress::find($device->ip_address_id);
+            $ipSet->booked = true;
+            $ipSet->save();
+        }
+        
+        Topology::create([
+            "device_id" => $device->id,
+        ]);
     }
 
     /**

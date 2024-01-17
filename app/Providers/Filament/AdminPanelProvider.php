@@ -32,18 +32,18 @@ class AdminPanelProvider extends PanelProvider
             ->id('app')
             ->path('app')
             ->login()
-            ->darkMode(false)
-            ->brandName('BK SMA Taruna Bakti')
+            ->darkMode(true)
+            ->brandName('Dokumentasi ICT YTB')
             ->brandLogo(asset('images/brand.png'))
             ->brandLogoHeight('4rem')
             ->profile()
-            ->favicon(asset('images/favicon.jpg'))
+            ->favicon(asset('images/favicon.png'))
             ->sidebarCollapsibleOnDesktop()
             ->colors([
-                'danger' => Color::Rose,
+                'danger' => Color::Red,
                 'gray' => Color::Gray,
                 'info' => Color::Blue,
-                'primary' => Color::Indigo,
+                'primary' => Color::Green,
                 'success' => Color::Emerald,
                 'warning' => Color::Orange,
             ])
@@ -75,9 +75,9 @@ class AdminPanelProvider extends PanelProvider
                 BreezyCore::make(),
                 FilamentShieldPlugin::make(),
                 FilamentBackgroundsPlugin::make()
-                    ->imageProvider(
+                    /* ->imageProvider(
                         Triangles::make()
-                    )
+                    ) */
                     ->showAttribution(false),
             ]);
     }

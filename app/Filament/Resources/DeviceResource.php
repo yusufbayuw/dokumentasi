@@ -2,17 +2,18 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\DeviceResource\Pages;
-use App\Filament\Resources\DeviceResource\RelationManagers;
-use App\Models\Device;
-use App\Models\IpAddress;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use App\Models\Device;
+use Filament\Forms\Form;
+use App\Models\IpAddress;
 use Filament\Tables\Table;
+use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Builder;
+use App\Filament\Resources\DeviceResource\Pages;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
+use App\Filament\Resources\DeviceResource\RelationManagers;
 
 class DeviceResource extends Resource
 {
@@ -24,12 +25,17 @@ class DeviceResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('ip_address_id'),
-                Forms\Components\TextInput::make('type_device_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('ruangan_id')
-                    ->numeric(),
+                Forms\Components\Select::make('ip_address_id')
+                    ->relationship('ip', 'nama')
+                    ->searchable(),
+                Forms\Components\Select::make('type_device_id')
+                    ->relationship('type', 'nama')
+                    ->searchable()
+                    ->preload(),
+                Forms\Components\Select::make('ruangan_id')
+                    ->relationship('ruangan', 'nama')
+                    ->preload()
+                    ->searchable(),
                 Forms\Components\TextInput::make('nama')
                     ->required()
                     ->maxLength(255),
@@ -42,6 +48,9 @@ class DeviceResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('id'),
+                Tables\Columns\TextColumn::make('nama')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('ip.nama')
                     ->label('IP')
                     ->sortable(),
@@ -52,8 +61,6 @@ class DeviceResource extends Resource
                 Tables\Columns\TextColumn::make('ruangan.nama')
                     ->label('Lokasi Ruang')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('nama')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('keterangan')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -73,6 +80,7 @@ class DeviceResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
+                    ExportBulkAction::make(),
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);

@@ -36,4 +36,9 @@ class Device extends Model
     {
         return $this->belongsTo(TypeDevice::class, 'type_device_id', 'id');
     }
+
+    public function topology(): HasOne
+    {
+        return $this->hasOne(Topology::class, 'device_id', 'id');
+    }
 }

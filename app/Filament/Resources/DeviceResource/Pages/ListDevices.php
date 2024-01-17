@@ -20,4 +20,5 @@ class ListDevices extends ListRecords
             Actions\CreateAction::make(),
         ];
     }
+    
 }

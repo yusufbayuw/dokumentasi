@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Models\User;
 use App\Models\Device;
 use App\Models\Network;
+use App\Models\Topology;
 use App\Observers\UserObserver;
 use App\Observers\DeviceObserver;
 use App\Observers\NetworkObserver;
+use App\Observers\TopologyObserver;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -32,6 +34,7 @@ class EventServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Device::observe(DeviceObserver::class);
+        Topology::observe(TopologyObserver::class);
         Network::observe(NetworkObserver::class);
         User::observe(UserObserver::class);
     }

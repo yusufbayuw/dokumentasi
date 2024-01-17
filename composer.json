@@ -23,6 +23,7 @@
         "psr/simple-cache": "2.0",
         "pxlrbt/filament-excel": "^2.1",
         "saade/filament-adjacency-list": "^3.1",
+        "solution-forest/filament-tree": "^2.0",
         "swisnl/filament-backgrounds": "^1.1"
     },
     "require-dev": {
