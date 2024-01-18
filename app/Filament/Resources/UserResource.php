@@ -27,6 +27,8 @@ class UserResource extends Resource
 
     protected static ?string $slug = 'anggota';
 
+    protected static ?string $modelLabel = 'anggota';
+
     public static function form(Form $form): Form
     {
         return $form

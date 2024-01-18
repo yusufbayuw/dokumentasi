@@ -19,28 +19,35 @@ class DeviceResource extends Resource
 {
     protected static ?string $model = Device::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
+    protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
+    protected static ?string $modelLabel = 'Perangkat';
+    protected static ?string $navigationLabel = 'Perangkat';
+    protected static ?int $navigationSort = 2;
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('ip_address_id')
-                    ->relationship('ip', 'nama')
-                    ->searchable(),
-                Forms\Components\Select::make('type_device_id')
-                    ->relationship('type', 'nama')
-                    ->searchable()
-                    ->preload(),
-                Forms\Components\Select::make('ruangan_id')
-                    ->relationship('ruangan', 'nama')
-                    ->preload()
-                    ->searchable(),
-                Forms\Components\TextInput::make('nama')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('keterangan')
-                    ->maxLength(255),
+                Forms\Components\Section::make([
+                    Forms\Components\Select::make('ip_address_id')
+                        ->relationship('ip', 'nama')
+                        ->label('IP Address')
+                        ->searchable(),
+                    Forms\Components\Select::make('type_device_id')
+                        ->relationship('type', 'nama')
+                        ->label('Jenis Perangkat')
+                        ->searchable()
+                        ->preload(),
+                    Forms\Components\Select::make('ruangan_id')
+                        ->relationship('ruangan', 'nama')
+                        ->label('Nama Ruangan')
+                        ->preload()
+                        ->searchable(),
+                    Forms\Components\TextInput::make('nama')
+                        ->required()
+                        ->maxLength(255),
+                    Forms\Components\TextInput::make('keterangan')
+                        ->maxLength(255),
+                ]),
             ]);
     }
 

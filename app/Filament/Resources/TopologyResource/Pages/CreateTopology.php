@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateTopology extends CreateRecord
 {
     protected static string $resource = TopologyResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

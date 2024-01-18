@@ -18,8 +18,10 @@ class TopologyResource extends Resource
 {
     protected static ?string $model = Topology::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
+    protected static ?string $navigationIcon = 'heroicon-o-table-cells';
+    protected static ?int $navigationSort = 3;
+    protected static ?string $modelLabel = 'Topologi';
+    protected static ?string $navigationLabel = 'Topologi';
     public static function form(Form $form): Form
     {
         return $form

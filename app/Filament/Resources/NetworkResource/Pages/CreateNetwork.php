@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateNetwork extends CreateRecord
 {
     protected static string $resource = NetworkResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

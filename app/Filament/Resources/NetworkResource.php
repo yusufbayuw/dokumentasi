@@ -21,7 +21,15 @@ class NetworkResource extends Resource
 {
     protected static ?string $model = Network::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-wifi';
+    protected static ?string $modelLabel = 'Jaringan';
+    protected static ?string $navigationGroup = 'Konfigurasi';
+
+    protected static ?string $navigationLabel = 'Jaringan';
+
+    protected static ?int $navigationSort = 3;
+
+    protected static ?string $slug = 'jaringan';
 
     public static function form(Form $form): Form
     {

@@ -19,7 +19,7 @@ class TopologyImport implements ToCollection
             if ($key === 0) {
                 //
             } else {
-                //if (User::find($row[0])) {}
+                /* //if (User::find($row[0])) {}
                 if ($row[2])
                 {
                     Topology::updateOrCreate(
@@ -32,7 +32,11 @@ class TopologyImport implements ToCollection
                         ['id' => $row[0],],[
                         'parent_id' => $row[1],
                     ]);
-                }
+                } */
+                Topology::updateOrCreate(
+                    ['id' => $row[0],],[
+                    'parent_id' => $row[1],
+                ]);
             }           
         }
     }
