@@ -31,7 +31,8 @@ class LantaiResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('gedung_id')
                     ->required()
-                    ->numeric(),
+                    ->relationship('gedung', 'nama')
+                    ->label('Gedung'),
                 Forms\Components\TextInput::make('nama')
                     ->required()
                     ->maxLength(255),
