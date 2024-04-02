@@ -18,7 +18,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable implements FilamentUser
 {
-    use HasApiTokens, HasRoles, HasPanelShield, HasFactory, Notifiable;
+    use HasApiTokens, HasRoles, HasFactory, Notifiable; //HasPanelShield,
 
     /**
      * The attributes that are mass assignable.

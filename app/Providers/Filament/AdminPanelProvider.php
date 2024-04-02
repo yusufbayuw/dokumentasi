@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\Login;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\Widgets;
@@ -31,7 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('app')
             ->path('app')
-            ->login()
+            ->login(Login::class)
             ->darkMode(true)
             ->brandName('Dokumentasi ICT YTB')
             ->brandLogo(asset('images/brand.png'))
@@ -41,10 +42,10 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->colors([
                 'danger' => Color::Red,
-                'gray' => Color::Gray,
+                'gray' => Color::Zinc,
                 'info' => Color::Blue,
-                'primary' => Color::Green,
-                'success' => Color::Emerald,
+                'primary' => Color::Gray,
+                'success' => Color::Green,
                 'warning' => Color::Orange,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
