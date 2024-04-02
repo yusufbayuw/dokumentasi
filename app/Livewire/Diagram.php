@@ -1,18 +1,17 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Livewire;
 
+use Livewire\Component;
 use App\Models\Topology;
-use Illuminate\Http\Request;
 
-class DiagramViewController extends Controller
+class Diagram extends Component
 {
-    public function index()
+    public function render()
     {
         $topologies = Topology::all();
         $nodeDataArray = $this->convertToNodeDataArray($topologies);
-        //dd($nodeDataArray);
-        return view('iframe.diagram', ['nodeDataArrayJson' => json_encode($nodeDataArray, JSON_PRETTY_PRINT)]);
+        return view('livewire.diagram', ['nodeDataArrayJson' => json_encode($nodeDataArray, JSON_PRETTY_PRINT)]);
     }
 
     // Function to convert Eloquent collection to the desired structure

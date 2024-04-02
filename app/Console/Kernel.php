@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\PingIpAddress;
 use App\Models\User;
 use App\Models\Pilihan;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
+        $schedule->job(new PingIpAddress)->everyMinute();
     }
 
     /**
