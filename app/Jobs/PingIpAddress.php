@@ -32,9 +32,9 @@ class PingIpAddress implements ShouldQueue
 
         foreach ($ipAddresses as $ipAddress) {
 
-            $output = exec("ping -c 1 ".$ipAddress->nama, $results, $return);
-            dd($results);
-            if ($return === 0) {
+            $output = exec("ping -c 1 " . $ipAddress->nama, $results, $return);
+
+            if (strpos($output, '0% packet loss') !== false) {
                 $ipAddress->status = true;
                 $ipAddress->save();
             }
