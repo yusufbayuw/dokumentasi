@@ -2,10 +2,8 @@
 
 namespace App\Jobs;
 
-use Acamposm\Ping\Ping;
 use App\Models\IpAddress;
 use Illuminate\Bus\Queueable;
-use Acamposm\Ping\PingCommandBuilder;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
