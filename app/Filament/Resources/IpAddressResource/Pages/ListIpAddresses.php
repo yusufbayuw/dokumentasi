@@ -21,8 +21,8 @@ class ListIpAddresses extends ListRecords
                 foreach ($ipAddresses as $ipAddress) {
 
                     $output = exec("ping -c 1 " . $ipAddress->nama, $results, $return);
-                    dd($results);
-                    if ($return === 0) {
+
+                    if (strpos($output, '0% packet loss') !== false) {
                         $ipAddress->status = true;
                         $ipAddress->save();
                     }
