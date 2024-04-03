@@ -1,5 +1,7 @@
 <div>
-    <script src="https://unpkg.com/gojs@2.3.13/release/go.js"></script>
+  @assets  
+  <script src="{{ asset('js/go.js') }}"></script>
+  @endassets
     <div id="allSampleContent" class="p-4 w-full">
     
     <style type="text/css">
@@ -15,6 +17,7 @@
       }
     </style>
     <link href="https://fonts.googleapis.com/css?family=Roboto:400,500" rel="stylesheet" type="text/css">
+    @script
       <script id="code">
       function init() {
     
@@ -216,7 +219,7 @@
       }
       window.addEventListener('DOMContentLoaded', init);
     </script>
-    
+    @endscript
     <div id="sample" style="position: relative;">
     <div id="myDiagramDiv" style="background-color: rgb(242, 242, 242); border: none ; width: 100%; height: 700px; position: relative; -webkit-tap-highlight-color: rgba(255, 255, 255, 0);"><canvas tabindex="0" width="818" height="853" style="position: absolute; top: 0px; left: 0px; z-index: 2; user-select: none; touch-action: none; width: 655px; height: 683px;"></canvas><div style="position: absolute; overflow: auto; width: 670px; height: 698px; z-index: 1;"><div style="position: absolute; width: 3433.65px; height: 1590.37px;"></div></div></div>
     <div id="myOverviewDiv" style="-webkit-tap-highlight-color: rgba(255, 255, 255, 0);"><canvas tabindex="0" width="198" height="98" style="position: absolute; top: 0px; left: 0px; z-index: 2; user-select: none; touch-action: none; width: 198px; height: 98px;"></canvas><div style="position: absolute; overflow: auto; width: 198px; height: 98px; z-index: 1;"><div style="position: absolute; width: 1px; height: 1px;"></div></div></div> <!-- Styled in a <style> tag at the top of the html page -->
