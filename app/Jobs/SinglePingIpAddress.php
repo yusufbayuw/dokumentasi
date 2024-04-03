@@ -33,7 +33,7 @@ class SinglePingIpAddress implements ShouldQueue
     {
         $output = exec("ping -c 1 " . $this->ipAddress, $results, $return);
 
-        if (strpos($results[4] ?? '0', '0% packet loss') !== false) {
+        if (strpos($results[4] ?? '0', ', 0% packet loss') !== false) {
             $IpAddr = IpAddress::find($this->ipId);
             $IpAddr->status = true;
             $IpAddr->save();
