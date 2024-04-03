@@ -68,8 +68,9 @@ class DeviceResource extends Resource
                 Tables\Columns\TextColumn::make('ruangan.nama')
                     ->label('Lokasi Ruang')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('keterangan')
-                    ->searchable(),
+                Tables\Columns\IconColumn::make('ip.status')
+                    ->sortable()
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
