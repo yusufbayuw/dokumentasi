@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DiagramViewController;
+use App\Http\Controllers\LaporanController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,3 +19,4 @@ use Illuminate\Support\Facades\Route;
     return view('welcome');//redirect('/app');
 }); */
 Route::get('/diagram', [DiagramViewController::class, 'index'])->name('diagram');
+Route::get('/laporan', [LaporanController::class, 'generatePdf']);

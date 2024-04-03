@@ -12,7 +12,7 @@ class Device extends Model
 {
     use HasFactory;
 
-    public function deviceLinks(): HasMany
+    /* public function deviceLinks(): HasMany
     {
         return $this->hasMany(DeviceLink::class, 'device_id', 'id');
     }
@@ -20,7 +20,7 @@ class Device extends Model
     public function childrenLinks(): HasMany
     {
         return $this->hasMany(DeviceLink::class, 'children_id', 'id');
-    }
+    } */
 
     public function ruangan(): BelongsTo
     {
