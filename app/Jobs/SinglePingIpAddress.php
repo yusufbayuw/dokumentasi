@@ -37,6 +37,10 @@ class SinglePingIpAddress implements ShouldQueue
             $IpAddr = IpAddress::find($this->ipId);
             $IpAddr->status = true;
             $IpAddr->save();
+        } else {
+            $IpAddr = IpAddress::find($this->ipId);
+            $IpAddr->status = false;
+            $IpAddr->save();
         }
     }
 }
