@@ -29,13 +29,7 @@ class PingIpAddress implements ShouldQueue
         $ipAddresses = IpAddress::where('booked', true)->get(); // Assuming IPAddress is your Eloquent model
 
         foreach ($ipAddresses as $ipAddress) {
-
-            $output = exec("ping -c 1 " . $ipAddress->nama, $results, $return);
-
-            if (strpos($output, '0% packet loss') !== false) {
-                $ipAddress->status = true;
-                $ipAddress->save();
-            }
+            SinglePingIpAddress::dispatch($ipAddress->nama, $ipAddress->id);
         }
     }
 }
