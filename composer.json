@@ -20,6 +20,7 @@
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "predis/predis": "^2.2",
         "psr/simple-cache": "2.0",
         "pxlrbt/filament-excel": "^2.1",
         "saade/filament-adjacency-list": "^3.1",
