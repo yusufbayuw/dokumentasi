@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-/* Route::get('/', function () {
-    return view('welcome');//redirect('/app');
-}); */
-Route::get('/diagram', [DiagramViewController::class, 'index'])->name('diagram');
+Route::get('/', function () {
+    return redirect('/app');
+});
+//Route::get('/diagram', [DiagramViewController::class, 'index'])->name('diagram');
 Route::get('/laporan', [LaporanController::class, 'generatePdf']);

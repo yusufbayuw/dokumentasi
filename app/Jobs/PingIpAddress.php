@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\IpAddress;
+use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
@@ -31,5 +32,11 @@ class PingIpAddress implements ShouldQueue
         foreach ($ipAddresses as $ipAddress) {
             SinglePingIpAddress::dispatch($ipAddress->nama, $ipAddress->id);
         }
+
+        Notification::make()
+            ->success()
+            ->title('Ping Berhasil')
+            ->body('jumlah perangkat offline: '.IpAddress::where('booked', true)->where('status', false)->count().'.')
+            ->send();
     }
 }
