@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('Dokumentasi ICT YTB')
             ->brandLogo(asset('images/brand.png'))
             ->brandLogoHeight('4rem')
+            ->topNavigation()
             ->profile()
             ->favicon(asset('images/favicon.png'))
             ->sidebarCollapsibleOnDesktop()

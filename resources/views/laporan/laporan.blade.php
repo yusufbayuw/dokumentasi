@@ -68,12 +68,27 @@ h2 {
     </div>
     <div>
         <h2>Rekap Perangkat IT</h2>
-        <div style="border: steelblue">
-            @foreach ($typeDevice as $idx => $type)
-               <p>{{ $idx+1 . ". " . $type->nama . ": ". Device::where('type_device_id', $type->id)->count() . " perangkat." }}</p> 
-            @endforeach
+        <div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Jenis Perangkat</th>
+                        <th>Jumlah</th>
+                    </tr>
+                </thead>
+                @foreach ($typeDevice as $idx => $type)
+                    <tr>
+                        <td>{{ $idx+1 }}</td>
+                        <td>{{ $type->nama }}</td>
+                        <td>{{ Device::where('type_device_id', $type->id)->count() }}</td>
+                    </tr>
+                @endforeach
+            </table>
         </div>
-
+    </div>
+    <div>
+        <h2>Rincian Perangkat IT</h2>
         @foreach ($typeDevice as $idx => $type)
             <h3>{{ $idx+1 .". ".$type->nama }}</h3>
             <table>   
@@ -102,10 +117,6 @@ h2 {
             </tbody>
         </table> 
         @endforeach
-          
-    </div>
-    <div>
-        <h2>Rekap Perangkap IT Unit</h2>
     </div>
 </body>
 </html>
