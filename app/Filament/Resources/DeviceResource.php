@@ -14,6 +14,7 @@ use App\Filament\Resources\DeviceResource\Pages;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use App\Filament\Resources\DeviceResource\RelationManagers;
+use Rats\Zkteco\Lib\ZKTeco;
 
 class DeviceResource extends Resource
 {
@@ -85,6 +86,17 @@ class DeviceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('restart')
+                    ->label('Reboot')
+                    ->icon('heroicon-o-arrow-path')
+                        ->action(function (Device $device) {
+                            $ip = $device->ip->nama;
+                            $zk = new ZKTeco($ip);
+                            $zk->connect();
+                            $zk->restart();
+                            //$zk->disconnect();
+                        })
+                    ->hidden(fn (Device $device) => ($device->type->nama != "Finger Print")),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
