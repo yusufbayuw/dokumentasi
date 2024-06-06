@@ -63,8 +63,10 @@ h2 {
     </style>
 </head>
 <body>
-    <div>
-        <h1>Laporan</h1>
+    <div style="text-align: center">
+        <h1 style="margin-bottom: 1pt">Dokumentasi Sistem & Teknologi Informasi</h1>
+        <h1 style="margin-top: 1pt">Yayasan Taruna Bakti</h1>
+        <p style="margin-top: 50%;"><i>Dokumen ini digenerate melalui <a href="{{ env('APP_URL') }}">Sistem Dokumentasi ICT Yayasan Taruna Bakti</a> pada tanggal {{ date_format(now(),"d-m-Y") }} pukul {{ date_format(now(),"H:i:s") }} WIB dan untuk digunakan sebagaimana mestinya. Untuk mendapatkan dokumen terbaru silakan menghubungi Administrator.</i></p>
     </div>
     <div>
         <h2>Rekap Perangkat IT</h2>
