@@ -30,7 +30,7 @@ class Kernel extends ConsoleKernel
                 $zk->connect();
                 $zk->restart();
             }
-        })->dailyAt('07:30');
+        })->dailyAt('03:00');
     }
 
     /**
