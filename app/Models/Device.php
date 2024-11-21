@@ -12,6 +12,10 @@ class Device extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'location' => 'json',
+    ];
+
     /* public function deviceLinks(): HasMany
     {
         return $this->hasMany(DeviceLink::class, 'device_id', 'id');

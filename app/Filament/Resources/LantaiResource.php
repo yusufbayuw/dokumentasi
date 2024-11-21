@@ -29,7 +29,7 @@ class LantaiResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('gedung_id')
+                Forms\Components\Select::make('gedung_id')
                     ->required()
                     ->relationship('gedung', 'nama')
                     ->label('Gedung'),
@@ -38,6 +38,8 @@ class LantaiResource extends Resource
                     ->maxLength(255),
                 Forms\Components\TextInput::make('keterangan')
                     ->maxLength(255),
+                Forms\Components\FileUpload::make('image_path')
+                    ->label('Denah Lantai'),
             ]);
     }
 
@@ -59,6 +61,8 @@ class LantaiResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\ImageColumn::make('image_path')
+                    ->label('Denah'),
             ])
             ->filters([
                 //

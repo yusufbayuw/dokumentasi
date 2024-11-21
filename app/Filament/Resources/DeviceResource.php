@@ -14,6 +14,10 @@ use App\Filament\Resources\DeviceResource\Pages;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 use App\Filament\Resources\DeviceResource\RelationManagers;
+use App\Forms\Components\LeafletMap;
+use App\Models\Lantai;
+use App\Models\Ruangan;
+use Filament\Forms\Get;
 use Rats\Zkteco\Lib\ZKTeco;
 
 class DeviceResource extends Resource
@@ -41,6 +45,7 @@ class DeviceResource extends Resource
                     Forms\Components\Select::make('ruangan_id')
                         ->relationship('ruangan', 'nama')
                         ->label('Nama Ruangan')
+                        ->reactive()
                         ->preload()
                         ->searchable(),
                     Forms\Components\TextInput::make('nama')
@@ -48,6 +53,14 @@ class DeviceResource extends Resource
                         ->maxLength(255),
                     Forms\Components\TextInput::make('keterangan')
                         ->maxLength(255),
+                    LeafletMap::make('location')
+                        ->label('Lokasi Perangkat')
+                        ->hidden(fn(Get $get) => !$get('ruangan_id'))
+                        ->floorImage(
+                            function (Get $get) {
+                                return Ruangan::find($get('ruangan_id'))->lantai->image_path ?? null;
+                            }
+                        ),
                 ]),
             ]);
     }
@@ -89,14 +102,14 @@ class DeviceResource extends Resource
                 Tables\Actions\Action::make('restart')
                     ->label('Reboot')
                     ->icon('heroicon-o-arrow-path')
-                        ->action(function (Device $device) {
-                            $ip = $device->ip->nama;
-                            $zk = new ZKTeco($ip);
-                            $zk->connect();
-                            $zk->restart();
-                            //$zk->disconnect();
-                        })
-                    ->hidden(fn (Device $device) => ($device->type->nama != "Finger Print")),
+                    ->action(function (Device $device) {
+                        $ip = $device->ip->nama;
+                        $zk = new ZKTeco($ip);
+                        $zk->connect();
+                        $zk->restart();
+                        //$zk->disconnect();
+                    })
+                    ->hidden(fn(Device $device) => ($device->type->nama != "Finger Print")),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

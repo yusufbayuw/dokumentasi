@@ -31,10 +31,11 @@ class RuanganResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('lantai_id')
-                    ->numeric(),
-                Forms\Components\TextInput::make('unit_id')
-                    ->numeric(),
+                Forms\Components\Select::make('lantai_id')
+                    ->relationship('lantai','nama')
+                    ->label('Lantai'),
+                Forms\Components\Select::make('unit_id')
+                    ->relationship('unit','nama'),
                 Forms\Components\TextInput::make('nama')
                     ->required()
                     ->maxLength(255),
@@ -66,6 +67,7 @@ class RuanganResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                
             ])
             ->filters([
                 //
