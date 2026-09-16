@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\NetworkResource\Pages;
 
 use App\Filament\Resources\NetworkResource;
+use App\Models\Device;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -13,7 +14,19 @@ class EditNetwork extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->requiresConfirmation()
+                ->disabled(function (): bool {
+                    $ipIds = $this->record->ip_address()->pluck('id');
+
+                    if ($ipIds->isEmpty()) {
+                        return false;
+                    }
+
+                    return Device::query()
+                        ->whereIn('ip_address_id', $ipIds)
+                        ->exists();
+                }),
         ];
     }
 
