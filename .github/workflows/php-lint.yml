@@ -1,4 +1,4 @@
-name: PHP Lint
+name: Code Lint
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  php-lint:
+  code-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -23,3 +23,6 @@ jobs:
         run: |
           find app bootstrap config database routes tests -type f -name '*.php' -print0 \
             | xargs -0 -n1 php -l
+
+      - name: Check topology JavaScript syntax
+        run: node --check public/js/network-topology.js
