@@ -1,0 +1,360 @@
+.network-topology-shell {
+    --nt-bg: #f8fafc;
+    --nt-surface: #ffffff;
+    --nt-surface-soft: #f1f5f9;
+    --nt-border: #e2e8f0;
+    --nt-text: #0f172a;
+    --nt-muted: #64748b;
+    --nt-primary: #2563eb;
+    --nt-online: #16a34a;
+    --nt-offline: #dc2626;
+    --nt-unknown: #94a3b8;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--nt-border);
+    border-radius: 14px;
+    background: var(--nt-surface);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+html.dark .network-topology-shell {
+    --nt-bg: #0f172a;
+    --nt-surface: #111827;
+    --nt-surface-soft: #1e293b;
+    --nt-border: #334155;
+    --nt-text: #f8fafc;
+    --nt-muted: #94a3b8;
+    --nt-primary: #60a5fa;
+}
+
+.network-topology-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border-bottom: 1px solid var(--nt-border);
+    background: var(--nt-surface);
+}
+
+.network-topology-search {
+    position: relative;
+    flex: 1 1 280px;
+    min-width: 220px;
+}
+
+.network-topology-search svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    width: 17px;
+    height: 17px;
+    transform: translateY(-50%);
+    color: var(--nt-muted);
+    pointer-events: none;
+}
+
+.network-topology-control,
+.network-topology-select {
+    height: 38px;
+    border: 1px solid var(--nt-border);
+    border-radius: 9px;
+    background: var(--nt-surface);
+    color: var(--nt-text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.network-topology-control:focus,
+.network-topology-select:focus {
+    border-color: var(--nt-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
+.network-topology-control {
+    width: 100%;
+    padding: 0 12px 0 36px;
+}
+
+.network-topology-select {
+    min-width: 145px;
+    padding: 0 30px 0 10px;
+}
+
+.network-topology-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+}
+
+.network-topology-button {
+    display: inline-flex;
+    height: 36px;
+    min-width: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--nt-border);
+    border-radius: 8px;
+    background: var(--nt-surface);
+    color: var(--nt-text);
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+
+.network-topology-button:hover {
+    background: var(--nt-surface-soft);
+    border-color: #cbd5e1;
+}
+
+html.dark .network-topology-button:hover {
+    border-color: #475569;
+}
+
+.network-topology-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--nt-border);
+    background: var(--nt-surface-soft);
+    color: var(--nt-muted);
+    font-size: 12px;
+}
+
+.network-topology-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    background: var(--nt-surface);
+    padding: 5px 9px;
+    border: 1px solid var(--nt-border);
+    color: var(--nt-text);
+    font-weight: 600;
+}
+
+.network-topology-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--nt-unknown);
+}
+
+.network-topology-dot.online { background: var(--nt-online); }
+.network-topology-dot.offline { background: var(--nt-offline); }
+.network-topology-dot.unknown { background: var(--nt-unknown); }
+
+.network-topology-count {
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.network-topology-stage {
+    position: relative;
+    background: var(--nt-bg);
+}
+
+#myDiagramDiv {
+    width: 100%;
+    height: min(72vh, 780px);
+    min-height: 580px;
+    background: var(--nt-bg);
+    outline: none;
+}
+
+#myOverviewDiv {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    width: 170px;
+    height: 105px;
+    overflow: hidden;
+    border: 1px solid var(--nt-border);
+    border-radius: 10px;
+    background: var(--nt-surface);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+    z-index: 20;
+}
+
+#myOverviewDiv.is-hidden {
+    display: none;
+}
+
+.network-topology-detail {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: min(360px, calc(100% - 28px));
+    max-height: calc(100% - 28px);
+    overflow-y: auto;
+    border: 1px solid var(--nt-border);
+    border-radius: 12px;
+    background: var(--nt-surface);
+    box-shadow: 0 12px 34px rgba(15, 23, 42, .16);
+    z-index: 30;
+    transform: translateX(calc(100% + 30px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .18s ease, opacity .18s ease;
+}
+
+.network-topology-detail.is-open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.network-topology-detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px;
+    border-bottom: 1px solid var(--nt-border);
+}
+
+.network-topology-detail-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.network-topology-detail-title strong {
+    display: block;
+    overflow: hidden;
+    color: var(--nt-text);
+    font-size: 15px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.network-topology-detail-title span {
+    display: block;
+    margin-top: 4px;
+    color: var(--nt-muted);
+    font-size: 12px;
+}
+
+.network-topology-close {
+    border: 0;
+    background: transparent;
+    color: var(--nt-muted);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.network-topology-detail-body {
+    padding: 14px 16px 16px;
+}
+
+.network-topology-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 14px;
+    border-radius: 999px;
+    padding: 5px 9px;
+    background: var(--nt-surface-soft);
+    color: var(--nt-text);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.network-topology-detail-grid {
+    display: grid;
+    grid-template-columns: 105px 1fr;
+    gap: 10px 12px;
+    font-size: 12px;
+}
+
+.network-topology-detail-grid dt {
+    color: var(--nt-muted);
+}
+
+.network-topology-detail-grid dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--nt-text);
+    font-weight: 500;
+}
+
+.network-topology-edit-link {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 16px;
+    border-radius: 8px;
+    background: #2563eb;
+    padding: 9px 12px;
+    color: #ffffff !important;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.network-topology-edit-link.is-visible {
+    display: flex;
+}
+
+.network-topology-empty {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.network-topology-empty.is-visible {
+    display: flex;
+}
+
+.network-topology-empty-card {
+    border: 1px solid var(--nt-border);
+    border-radius: 10px;
+    background: var(--nt-surface);
+    padding: 18px 22px;
+    color: var(--nt-muted);
+    font-size: 13px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .08);
+}
+
+.network-topology-shell:fullscreen {
+    border: 0;
+    border-radius: 0;
+}
+
+.network-topology-shell:fullscreen #myDiagramDiv {
+    height: calc(100vh - 105px);
+    min-height: 0;
+}
+
+@media (max-width: 900px) {
+    .network-topology-select {
+        flex: 1 1 140px;
+    }
+
+    .network-topology-actions {
+        width: 100%;
+        margin-left: 0;
+        overflow-x: auto;
+    }
+
+    #myDiagramDiv {
+        min-height: 520px;
+    }
+
+    #myOverviewDiv {
+        width: 135px;
+        height: 85px;
+    }
+}
