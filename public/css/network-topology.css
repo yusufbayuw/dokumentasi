@@ -29,39 +29,50 @@ html.dark .network-topology-shell {
 
 .network-topology-toolbar {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     padding: 14px;
     border-bottom: 1px solid var(--nt-border);
     background: var(--nt-surface);
 }
 
+.network-topology-filters {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) repeat(3, minmax(150px, 168px));
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 10px;
+    align-items: center;
+}
+
 .network-topology-search {
     position: relative;
-    flex: 1 1 280px;
-    min-width: 220px;
+    min-width: 0;
 }
 
 .network-topology-search svg {
     position: absolute;
-    left: 11px;
+    left: 12px;
     top: 50%;
     width: 17px;
     height: 17px;
     transform: translateY(-50%);
     color: var(--nt-muted);
     pointer-events: none;
+    z-index: 1;
 }
 
 .network-topology-control,
 .network-topology-select {
-    height: 38px;
+    box-sizing: border-box;
+    width: 100%;
+    height: 40px;
     border: 1px solid var(--nt-border);
     border-radius: 9px;
-    background: var(--nt-surface);
+    background-color: var(--nt-surface);
     color: var(--nt-text);
     font-size: 13px;
+    line-height: 1.25;
     outline: none;
     transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
 }
@@ -73,26 +84,44 @@ html.dark .network-topology-shell {
 }
 
 .network-topology-control {
-    width: 100%;
-    padding: 0 12px 0 36px;
+    padding: 0 12px 0 38px;
+}
+
+.network-topology-control::placeholder {
+    color: var(--nt-muted);
+    opacity: 1;
 }
 
 .network-topology-select {
-    min-width: 145px;
-    padding: 0 30px 0 10px;
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    padding: 0 40px 0 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%2364748b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px 16px;
+}
+
+html.dark .network-topology-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%2394a3b8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .network-topology-actions {
     display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 5px;
-    margin-left: auto;
 }
 
 .network-topology-button {
     display: inline-flex;
-    height: 36px;
-    min-width: 36px;
+    height: 38px;
+    min-width: 38px;
     align-items: center;
     justify-content: center;
     gap: 6px;
@@ -103,8 +132,14 @@ html.dark .network-topology-shell {
     padding: 0 10px;
     font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
     cursor: pointer;
     transition: background .15s ease, border-color .15s ease;
+}
+
+.network-topology-button-square {
+    width: 38px;
+    padding-inline: 0;
 }
 
 .network-topology-button:hover {
@@ -338,15 +373,34 @@ html.dark .network-topology-button:hover {
     min-height: 0;
 }
 
-@media (max-width: 900px) {
-    .network-topology-select {
-        flex: 1 1 140px;
+@media (max-width: 1280px) {
+    .network-topology-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .network-topology-filters {
+        flex-basis: 100%;
+        grid-template-columns: minmax(260px, 1fr) repeat(3, minmax(145px, 1fr));
     }
 
     .network-topology-actions {
         width: 100%;
-        margin-left: 0;
         overflow-x: auto;
+        padding-bottom: 1px;
+    }
+}
+
+@media (max-width: 820px) {
+    .network-topology-filters {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .network-topology-search {
+        grid-column: 1 / -1;
+    }
+
+    .network-topology-select:last-child {
+        grid-column: 1 / -1;
     }
 
     #myDiagramDiv {
@@ -356,5 +410,34 @@ html.dark .network-topology-button:hover {
     #myOverviewDiv {
         width: 135px;
         height: 85px;
+    }
+}
+
+@media (max-width: 560px) {
+    .network-topology-toolbar {
+        padding: 10px;
+    }
+
+    .network-topology-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .network-topology-search,
+    .network-topology-select:last-child {
+        grid-column: auto;
+    }
+
+    .network-topology-control,
+    .network-topology-select {
+        height: 42px;
+    }
+
+    .network-topology-summary {
+        padding-inline: 10px;
+    }
+
+    .network-topology-count {
+        width: 100%;
+        margin-left: 0;
     }
 }
