@@ -2,41 +2,35 @@
 
 namespace App\Jobs;
 
+use App\Models\Device;
 use App\Models\IpAddress;
-use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 class PingIpAddress implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        $ipAddresses = IpAddress::where('booked', true)->get(); // Assuming IPAddress is your Eloquent model
+        $assignedIpIds = Device::query()
+            ->whereNotNull('ip_address_id')
+            ->pluck('ip_address_id')
+            ->filter()
+            ->unique();
 
-        foreach ($ipAddresses as $ipAddress) {
-            SinglePingIpAddress::dispatch($ipAddress->nama, $ipAddress->id);
+        if ($assignedIpIds->isEmpty()) {
+            return;
         }
 
-        Notification::make()
-            ->success()
-            ->title('Ping Berhasil')
-            ->body('jumlah perangkat offline: '.IpAddress::where('booked', true)->where('status', false)->count().'.')
-            ->send();
+        IpAddress::query()
+            ->whereIn('id', $assignedIpIds)
+            ->get(['id', 'nama'])
+            ->each(function (IpAddress $ipAddress): void {
+                SinglePingIpAddress::dispatch($ipAddress->nama, $ipAddress->id);
+            });
     }
 }
