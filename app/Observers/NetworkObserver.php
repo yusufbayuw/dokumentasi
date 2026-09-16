@@ -2,150 +2,159 @@
 
 namespace App\Observers;
 
+use App\Models\Device;
 use App\Models\IpAddress;
 use App\Models\Network;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class NetworkObserver
 {
-    /**
-     * Handle the Network "created" event.
-     */
+    private const MAX_MANAGED_HOSTS = 65534;
+
     public function created(Network $network): void
     {
-        $startIP = $network->hostMin;
-        $endIP = $network->hostMax;
+        $this->syncIpPool($network);
+    }
 
-        $network_id = $network->id;
+    public function updating(Network $network): void
+    {
+        if (! $network->isDirty(['hostMin', 'hostMax'])) {
+            return;
+        }
 
-        $startLong = ip2long($startIP);
-        $endLong = ip2long($endIP);
+        [$startLong, $endLong] = $this->validatedRange($network);
 
-        for ($i = $startLong; $i <= $endLong; $i++) {
-            IpAddress::create([
-                'network_id' => $network_id,
-                'nama' => long2ip($i),
-            ]);
+        $assignedIpIds = Device::query()
+            ->whereNotNull('ip_address_id')
+            ->pluck('ip_address_id');
+
+        if ($assignedIpIds->isEmpty()) {
+            return;
+        }
+
+        $assignedIps = IpAddress::query()
+            ->where('network_id', $network->id)
+            ->whereIn('id', $assignedIpIds)
+            ->get(['id', 'nama']);
+
+        foreach ($assignedIps as $ipAddress) {
+            $ipLong = ip2long($ipAddress->nama);
+
+            if ($ipLong === false || $ipLong < $startLong || $ipLong > $endLong) {
+                throw ValidationException::withMessages([
+                    'address' => 'Perubahan jaringan dibatalkan karena ada IP yang masih dipakai perangkat dan akan keluar dari rentang jaringan baru.',
+                ]);
+            }
         }
     }
 
-    /**
-     * Handle the Network "updated" event.
-     */
     public function updated(Network $network): void
     {
-        $startIPOld = $network->getOriginal('hostMin');
-        $endIPOld = $network->getOriginal('hostMax');
-
-        $startIP = $network->hostMin;
-        $endIP = $network->hostMax;
-
-        $network_id = $network->id;
-
-        $startLongOld = ip2long($startIPOld);
-        $endLongOld = ip2long($endIPOld);
-
-        $startLong = ip2long($startIP);
-        $endLong = ip2long($endIP);
-
-        $availOld = (int) $network->getOriginal('hostPerNet');
-        $avail = (int) $network->getOriginal('hostPerNet');
-
-        if ($avail > $availOld) {
-            //sekarang lebih banyak
-            if ($startIP === $startIPOld) {
-                //IP tidak berubah
-                $startLong = $endLongOld + 1;
-                for ($i = $startLong; $i <= $endLong; $i++) {
-                    IpAddress::create([
-                        'network_id' => $network_id,
-                        'nama' => ($i),
-                    ]);
-                }
-            } else {
-                //Ip berubah
-                $idStart = IpAddress::where('nama', $startIPOld)->first()->id;
-                $idEnd = IpAddress::where('nama', $endIPOld)->first()->id;
-                for ($i = $startLong; $i <= $endLong; $i++) {
-                    if ($idStart <= $idEnd) {
-                        $ipNew = IpAddress::find($idStart);
-                        $ipNew->nama = ($i);
-                        $ipNew->save();
-                        $idStart += 1;
-                    } else {
-                        IpAddress::create([
-                            'network_id' => $network_id,
-                            'nama' => ($i),
-                        ]);
-                    }
-                }
-                for ($i = $startLong; $i <= $endLong; $i++) {
-                    IpAddress::create([
-                        'network_id' => $network_id,
-                        'nama' => ($i),
-                    ]);
-                }
-            }
-        } elseif ($avail < $availOld) {
-            //sekarang lebih sedikit
-            if ($startIP === $startIPOld) {
-                //ip tidak berubah
-                $startLong = $endLong + 1;
-                for ($i = $startLong; $i <= $endLongOld; $i++) {
-                    $ipNew = IpAddress::where('nama', $i)->first();
-                    $ipNew->delete();
-                }
-            } else {
-                //ip berubah
-            
-                $idStart = IpAddress::where('nama', $startIPOld)->first()->id;
-                $idEnd = IpAddress::where('nama', $endIPOld)->first()->id;
-                $stopper = $network->hostPerNet;
-                $count = 1;
-                for ($i = $idStart; $i <= $idEnd; $i++) {
-                    if ($count <= $stopper){
-                        $ipNew = IpAddress::find($i);
-                        $ipNew->nama = ($startLong);
-                        $ipNew->save();
-                        $startLong += 1;
-                    } else {
-                        $ipNew = IpAddress::find($i);
-                        $ipNew->delete();
-                    }
-                    $count += 1;
-                } 
-            }
-        } else {
-            $idStart = IpAddress::where('nama', $startIPOld)->first()->id;
-            $idEnd = IpAddress::where('nama', $endIPOld)->first()->id;
-            for ($i = $startLong; $i <= $endLong; $i++) {
-                $ipNew = IpAddress::find($idStart);
-                $ipNew->nama = ($i);
-                $ipNew->save();
-            }
+        if (! $network->wasChanged(['hostMin', 'hostMax'])) {
+            return;
         }
+
+        $this->syncIpPool($network);
     }
 
-    /**
-     * Handle the Network "deleted" event.
-     */
     public function deleted(Network $network): void
     {
-        //
+        // Foreign key pada ip_addresses akan menangani penghapusan sesuai konfigurasi schema.
     }
 
-    /**
-     * Handle the Network "restored" event.
-     */
     public function restored(Network $network): void
     {
-        //
+        $this->syncIpPool($network);
     }
 
-    /**
-     * Handle the Network "force deleted" event.
-     */
     public function forceDeleted(Network $network): void
     {
         //
+    }
+
+    private function syncIpPool(Network $network): void
+    {
+        [$startLong, $endLong] = $this->validatedRange($network);
+
+        DB::transaction(function () use ($network, $startLong, $endLong): void {
+            $existing = IpAddress::query()
+                ->where('network_id', $network->id)
+                ->get(['id', 'nama'])
+                ->keyBy('nama');
+
+            $desiredNames = [];
+            $rows = [];
+            $now = now();
+
+            for ($ipLong = $startLong; $ipLong <= $endLong; $ipLong++) {
+                $ip = long2ip($ipLong);
+                $desiredNames[$ip] = true;
+
+                if ($existing->has($ip)) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'network_id' => $network->id,
+                    'nama' => $ip,
+                    'status' => false,
+                    'booked' => false,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+
+                if (count($rows) >= 1000) {
+                    IpAddress::insert($rows);
+                    $rows = [];
+                }
+            }
+
+            if ($rows !== []) {
+                IpAddress::insert($rows);
+            }
+
+            $obsoleteIds = $existing
+                ->filter(fn (IpAddress $ipAddress): bool => ! isset($desiredNames[$ipAddress->nama]))
+                ->pluck('id');
+
+            if ($obsoleteIds->isEmpty()) {
+                return;
+            }
+
+            $usedIds = Device::query()
+                ->whereIn('ip_address_id', $obsoleteIds)
+                ->pluck('ip_address_id')
+                ->filter()
+                ->unique();
+
+            $deletableIds = $obsoleteIds->diff($usedIds);
+
+            if ($deletableIds->isNotEmpty()) {
+                IpAddress::query()->whereIn('id', $deletableIds)->delete();
+            }
+        });
+    }
+
+    private function validatedRange(Network $network): array
+    {
+        $startLong = ip2long((string) $network->hostMin);
+        $endLong = ip2long((string) $network->hostMax);
+
+        if ($startLong === false || $endLong === false || $startLong > $endLong) {
+            throw ValidationException::withMessages([
+                'address' => 'Rentang IP jaringan tidak valid.',
+            ]);
+        }
+
+        $hostCount = ($endLong - $startLong) + 1;
+
+        if ($hostCount > self::MAX_MANAGED_HOSTS) {
+            throw ValidationException::withMessages([
+                'netmask_original' => 'Rentang jaringan terlalu besar untuk dikelola. Maksimal 65.534 alamat host.',
+            ]);
+        }
+
+        return [$startLong, $endLong];
     }
 }
