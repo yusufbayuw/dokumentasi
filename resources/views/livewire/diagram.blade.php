@@ -1,48 +1,50 @@
 <div wire:ignore>
-    <link rel="stylesheet" href="{{ asset('css/network-topology.css') }}?v=20260916-1">
+    <link rel="stylesheet" href="{{ asset('css/network-topology.css') }}?v=20260916-2">
     <script src="{{ asset('js/go.js') }}"></script>
 
     <div id="networkTopologyShell" class="network-topology-shell">
         <div class="network-topology-toolbar">
-            <div class="network-topology-search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <circle cx="11" cy="11" r="7"></circle>
-                    <path d="m20 20-3.5-3.5"></path>
-                </svg>
-                <input
-                    id="networkSearch"
-                    class="network-topology-control"
-                    type="search"
-                    autocomplete="off"
-                    placeholder="Cari nama perangkat, IP, jenis, atau lokasi..."
-                >
+            <div class="network-topology-filters">
+                <div class="network-topology-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="m20 20-3.5-3.5"></path>
+                    </svg>
+                    <input
+                        id="networkSearch"
+                        class="network-topology-control"
+                        type="search"
+                        autocomplete="off"
+                        placeholder="Cari nama perangkat, IP, jenis, atau lokasi..."
+                    >
+                </div>
+
+                <select id="networkTypeFilter" class="network-topology-select" aria-label="Filter jenis perangkat">
+                    <option value="">Semua jenis</option>
+                    @foreach ($types as $type)
+                        <option value="{{ $type }}">{{ $type }}</option>
+                    @endforeach
+                </select>
+
+                <select id="networkUnitFilter" class="network-topology-select" aria-label="Filter unit">
+                    <option value="">Semua unit</option>
+                    @foreach ($units as $unit)
+                        <option value="{{ $unit }}">{{ $unit }}</option>
+                    @endforeach
+                </select>
+
+                <select id="networkStatusFilter" class="network-topology-select" aria-label="Filter status">
+                    <option value="">Semua status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="unknown">Tanpa IP</option>
+                </select>
             </div>
 
-            <select id="networkTypeFilter" class="network-topology-select" aria-label="Filter jenis perangkat">
-                <option value="">Semua jenis</option>
-                @foreach ($types as $type)
-                    <option value="{{ $type }}">{{ $type }}</option>
-                @endforeach
-            </select>
-
-            <select id="networkUnitFilter" class="network-topology-select" aria-label="Filter unit">
-                <option value="">Semua unit</option>
-                @foreach ($units as $unit)
-                    <option value="{{ $unit }}">{{ $unit }}</option>
-                @endforeach
-            </select>
-
-            <select id="networkStatusFilter" class="network-topology-select" aria-label="Filter status">
-                <option value="">Semua status</option>
-                <option value="online">Online</option>
-                <option value="offline">Offline</option>
-                <option value="unknown">Tanpa IP</option>
-            </select>
-
             <div class="network-topology-actions">
-                <button type="button" class="network-topology-button" data-network-action="zoom-out" title="Perkecil">−</button>
+                <button type="button" class="network-topology-button network-topology-button-square" data-network-action="zoom-out" title="Perkecil" aria-label="Perkecil">−</button>
                 <button type="button" class="network-topology-button" data-network-action="zoom-reset" title="Zoom 100%">100%</button>
-                <button type="button" class="network-topology-button" data-network-action="zoom-in" title="Perbesar">+</button>
+                <button type="button" class="network-topology-button network-topology-button-square" data-network-action="zoom-in" title="Perbesar" aria-label="Perbesar">+</button>
                 <button type="button" class="network-topology-button" data-network-action="fit" title="Fit ke layar">Fit</button>
                 <button type="button" class="network-topology-button" data-network-action="overview" title="Tampilkan/sembunyikan mini-map">Mini-map</button>
                 <button type="button" class="network-topology-button" data-network-action="fullscreen" title="Layar penuh">Fullscreen</button>
