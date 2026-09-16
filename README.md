@@ -1,66 +1,173 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Dokumentasi ICT YTB
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem internal untuk dokumentasi dan pemantauan infrastruktur ICT Yayasan Taruna Bakti. Aplikasi dibangun dengan Laravel 10 dan Filament 3.
 
-## About Laravel
+## Ruang Lingkup
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Data utama yang dikelola:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Perangkat ICT (`devices`)
+- Tipe perangkat (`type_devices`)
+- Jaringan (`networks`)
+- Pool IP (`ip_addresses`)
+- Gedung (`gedungs`)
+- Lantai (`lantais`)
+- Ruangan (`ruangans`)
+- Unit (`units`)
+- Topologi perangkat (`topologies`)
+- Pengguna, role, dan permission melalui Filament Shield
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Relasi utama:
 
-## Learning Laravel
+```text
+Gedung -> Lantai -> Ruangan -> Device -> IP Address -> Network
+                              |
+                              -> Topology
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+`devices.ip_address_id` adalah sumber kebenaran utama untuk menentukan apakah sebuah IP sedang digunakan perangkat. Kolom `ip_addresses.booked` tetap disinkronkan untuk kompatibilitas UI.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Fitur Operasional
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- Inventarisasi perangkat dan lokasi fisik
+- Pengelolaan subnet dan pool IP
+- Status online perangkat melalui ping
+- Topologi perangkat
+- Denah lantai dan posisi perangkat
+- Export data
+- PDF laporan dokumentasi ICT
+- Reboot perangkat fingerprint dari aplikasi
+- Reboot fingerprint terjadwal pukul 03:00
+- Role dan permission melalui Filament Shield
 
-## Laravel Sponsors
+## Persyaratan
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- PHP 8.1 atau lebih baru
+- MySQL / MariaDB
+- Composer
+- Node.js dan NPM untuk build asset
+- Perintah `ping` tersedia pada server
+- Scheduler Laravel aktif
+- Queue worker aktif apabila `QUEUE_CONNECTION` menggunakan driver asynchronous
 
-### Premium Partners
+## Instalasi
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+```bash
+composer install
+npm install
+npm run build
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan storage:link
+```
 
-## Contributing
+Konfigurasikan `.env`, terutama database, APP_URL, cache, session, queue, dan mail sesuai environment.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Operasional Production
 
-## Code of Conduct
+### Scheduler
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Laravel scheduler wajib dijalankan setiap menit:
 
-## Security Vulnerabilities
+```cron
+* * * * * cd /path/to/dokumentasi && php artisan schedule:run >> /dev/null 2>&1
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Scheduler saat ini menjalankan reboot perangkat bertipe `Finger Print` setiap pukul 03:00. Proses sudah memakai `withoutOverlapping()` dan kegagalan satu perangkat tidak menghentikan perangkat lainnya.
 
-## License
+### Queue
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Jika menggunakan Redis/database queue:
+
+```bash
+php artisan queue:work --tries=3 --timeout=60
+```
+
+Gunakan process manager seperti Supervisor atau systemd agar worker otomatis hidup kembali.
+
+Setelah deployment kode baru:
+
+```bash
+php artisan queue:restart
+```
+
+### Cache Production
+
+```bash
+php artisan optimize
+```
+
+Setelah perubahan konfigurasi atau deployment besar, bila diperlukan:
+
+```bash
+php artisan optimize:clear
+php artisan optimize
+```
+
+## Backup
+
+Sebelum perubahan schema, upgrade framework, atau perubahan besar pada jaringan:
+
+1. Backup database.
+2. Pastikan backup dapat direstore.
+3. Backup file upload pada storage/public yang digunakan aplikasi.
+4. Lakukan perubahan pada periode maintenance apabila menyentuh konfigurasi Network/IP.
+
+Database adalah sumber utama dokumentasi infrastruktur, sehingga backup harus diperlakukan sebagai bagian dari operasi rutin aplikasi.
+
+## Aturan Keamanan Data
+
+- Jangan menyimpan secret baru secara plaintext.
+- Kredensial perangkat tidak boleh masuk export, PDF, atau log.
+- Aksi reboot harus hanya diberikan kepada pengguna yang memiliki permission update perangkat.
+- Route laporan membutuhkan permission `view_any_device`.
+- Ping hanya menerima IPv4 valid dan dijalankan tanpa shell command concatenation.
+- Tipe perangkat yang masih digunakan tidak dapat dihapus dari UI.
+- Network yang masih memiliki IP yang dipakai Device tidak dapat dihapus dari UI.
+
+## Pengelolaan Network dan IP
+
+Network dikelola melalui menu Jaringan. CIDR yang diterima UI dibatasi `/16` sampai `/30` agar aplikasi tidak membuat pool IP yang terlalu besar.
+
+Saat Network berubah, sistem:
+
+1. Menghitung rentang host baru.
+2. Menolak perubahan jika ada IP aktif yang akan keluar dari rentang baru.
+3. Mempertahankan record IP yang masih valid.
+4. Menambahkan IP baru yang dibutuhkan.
+5. Menghapus IP lama hanya jika tidak direferensikan Device.
+
+Jangan melakukan manipulasi massal langsung pada tabel `ip_addresses` tanpa backup dan pengecekan relasi Device.
+
+## Monitoring IP
+
+Aksi **Ping Semua IP** mengambil target dari `devices.ip_address_id`, bukan hanya dari flag `booked`.
+
+Setiap ping dijalankan sebagai process dengan argumen terpisah dan timeout terbatas. Input yang bukan IPv4 valid akan ditolak dan dicatat ke log.
+
+## Laporan
+
+Laporan tersedia pada route `/laporan` untuk pengguna yang memiliki permission `view_any_device`.
+
+Data laporan dimuat melalui eager loading agar tidak menghasilkan query berulang. Perangkat yang belum mempunyai IP, ruangan, lantai, gedung, atau unit tetap dapat muncul tanpa menggagalkan proses PDF.
+
+## Quality Guard
+
+GitHub Actions menjalankan PHP syntax lint setiap push ke `main` melalui:
+
+```text
+.github/workflows/php-lint.yml
+```
+
+Regression test aplikasi masih perlu dikembangkan lebih lanjut, terutama untuk:
+
+- perubahan range Network
+- assignment dan perpindahan IP Device
+- proteksi delete master data
+- permission aksi operasional
+- generate laporan dengan relasi yang tidak lengkap
+
+## Catatan Upgrade
+
+Aplikasi masih menggunakan Laravel 10 dan Filament 3. Upgrade framework sebaiknya dilakukan setelah backup, regression test inti, dan dependency compatibility audit selesai. Hindari big-bang upgrade langsung pada production.
