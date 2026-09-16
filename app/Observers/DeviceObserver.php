@@ -8,59 +8,56 @@ use App\Models\Topology;
 
 class DeviceObserver
 {
-    /**
-     * Handle the Device "created" event.
-     */
     public function created(Device $device): void
     {
-        if ($device->ip_address_id){
-            $ipSet = IpAddress::find($device->ip_address_id);
-            $ipSet->booked = true;
-            $ipSet->save();
-        }
-        
-        Topology::create([
-            "device_id" => $device->id,
+        $this->syncBookedState($device->ip_address_id);
+
+        Topology::firstOrCreate([
+            'device_id' => $device->id,
         ]);
     }
 
-    /**
-     * Handle the Device "updated" event.
-     */
     public function updated(Device $device): void
     {
-        $ipSet = IpAddress::find($device->getOriginal('ip_address_id'));
-        $ipSet->booked = false;
-        $ipSet->save();
+        if (! $device->wasChanged('ip_address_id')) {
+            return;
+        }
 
-        $ipSet = IpAddress::find($device->ip_address_id);
-        $ipSet->booked = false;
-        $ipSet->save();
+        $this->syncBookedState($device->getOriginal('ip_address_id'));
+        $this->syncBookedState($device->ip_address_id);
     }
 
-    /**
-     * Handle the Device "deleted" event.
-     */
     public function deleted(Device $device): void
     {
-        $ipSet = IpAddress::find($device->getOriginal('ip_address_id'));
-        $ipSet->booked = false;
-        $ipSet->save();
+        $this->syncBookedState($device->getOriginal('ip_address_id'));
     }
 
-    /**
-     * Handle the Device "restored" event.
-     */
     public function restored(Device $device): void
     {
-        //
+        $this->syncBookedState($device->ip_address_id);
+
+        Topology::firstOrCreate([
+            'device_id' => $device->id,
+        ]);
     }
 
-    /**
-     * Handle the Device "force deleted" event.
-     */
     public function forceDeleted(Device $device): void
     {
-        //
+        $this->syncBookedState($device->getOriginal('ip_address_id'));
+    }
+
+    private function syncBookedState(?int $ipAddressId): void
+    {
+        if (! $ipAddressId) {
+            return;
+        }
+
+        $isUsed = Device::query()
+            ->where('ip_address_id', $ipAddressId)
+            ->exists();
+
+        IpAddress::query()
+            ->whereKey($ipAddressId)
+            ->update(['booked' => $isUsed]);
     }
 }
