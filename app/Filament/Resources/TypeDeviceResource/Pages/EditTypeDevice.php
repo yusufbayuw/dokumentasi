@@ -13,7 +13,9 @@ class EditTypeDevice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->requiresConfirmation()
+                ->disabled(fn (): bool => $this->record->device()->exists()),
         ];
     }
 
