@@ -109,12 +109,16 @@ class Diagram extends Component
         $normalized = strtolower(trim((string) $type));
 
         return match (true) {
-            str_contains($normalized, 'access') || str_contains($normalized, 'ap') => 'AP',
+            str_contains($normalized, 'access point'),
+            str_contains($normalized, 'accesspoint'),
+            $normalized === 'ap',
+            str_contains($normalized, 'wireless') => 'AP',
             str_contains($normalized, 'switch') => 'SW',
             str_contains($normalized, 'router') => 'RT',
             str_contains($normalized, 'server') => 'SV',
             str_contains($normalized, 'finger') => 'FP',
-            str_contains($normalized, 'cctv') || str_contains($normalized, 'camera') => 'CAM',
+            str_contains($normalized, 'cctv'),
+            str_contains($normalized, 'camera') => 'CAM',
             str_contains($normalized, 'printer') => 'PR',
             default => 'DEV',
         };
