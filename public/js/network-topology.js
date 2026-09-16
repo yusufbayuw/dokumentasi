@@ -283,10 +283,15 @@
             topologyNodes.forEach((node) => {
                 const haystack = [
                     node.name,
+                    node.assetCode,
+                    node.hostname,
                     node.ip,
                     node.type,
                     node.unit,
+                    node.ownerUnit,
                     node.location,
+                    node.criticalityLabel,
+                    node.lifecycleLabel,
                     node.description,
                 ].filter(Boolean).join(' ').toLowerCase();
 
@@ -409,8 +414,17 @@
 
             setDetailText('networkDetailName', data.name);
             setDetailText('networkDetailType', data.type);
+            setDetailText('networkDetailAssetCode', data.assetCode);
+            setDetailText('networkDetailHostname', data.hostname);
             setDetailText('networkDetailIp', data.ip);
+            setDetailText('networkDetailCriticality', data.criticalityLabel);
+            setDetailText('networkDetailLifecycle', data.lifecycleLabel);
+            setDetailText('networkDetailLatency', data.latency !== null && data.latency !== undefined ? `${data.latency} ms` : null);
+            setDetailText('networkDetailLastSeen', data.lastSeenAt);
+            setDetailText('networkDetailLastChecked', data.lastCheckedAt);
+            setDetailText('networkDetailMonitoring', data.monitoringEnabled ? 'Aktif' : 'Nonaktif');
             setDetailText('networkDetailUnit', data.unit);
+            setDetailText('networkDetailOwnerUnit', data.ownerUnit);
             setDetailText('networkDetailBuilding', data.building);
             setDetailText('networkDetailFloor', data.floor);
             setDetailText('networkDetailRoom', data.room);
