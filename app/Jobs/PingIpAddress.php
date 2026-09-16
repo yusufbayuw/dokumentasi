@@ -17,6 +17,7 @@ class PingIpAddress implements ShouldQueue
     public function handle(): void
     {
         $assignedIpIds = Device::query()
+            ->where('monitoring_enabled', true)
             ->whereNotNull('ip_address_id')
             ->pluck('ip_address_id')
             ->filter()
