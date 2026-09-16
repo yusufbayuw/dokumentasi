@@ -123,11 +123,7 @@ class NetworkResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    ExportBulkAction::make(),
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->requiresConfirmation(),
-                ]),
+                ExportBulkAction::make(),
             ]);
     }
 
