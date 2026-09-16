@@ -15,6 +15,7 @@ class Diagram extends Component
             ->with([
                 'device.ip',
                 'device.type',
+                'device.ownerUnit',
                 'device.ruangan.unit',
                 'device.ruangan.lantai.gedung',
             ])
@@ -32,7 +33,8 @@ class Diagram extends Component
                 $room = $device->ruangan;
                 $floor = $room?->lantai;
                 $building = $floor?->gedung;
-                $unit = $room?->unit;
+                $locationUnit = $room?->unit;
+                $ownerUnit = $device->ownerUnit;
 
                 $status = ! $ip
                     ? 'unknown'
@@ -49,6 +51,8 @@ class Diagram extends Component
                     'parent' => $topology->parent_id,
                     'deviceId' => $device->id,
                     'name' => $device->nama,
+                    'assetCode' => $device->asset_code,
+                    'hostname' => $device->hostname,
                     'type' => $device->type?->nama ?? 'Tanpa Jenis',
                     'typeCode' => $this->typeCode($device->type?->nama),
                     'ip' => $ip?->nama,
@@ -58,10 +62,19 @@ class Diagram extends Component
                         'offline' => 'Offline',
                         default => 'Tidak diketahui',
                     },
+                    'criticality' => $device->criticality ?? 'normal',
+                    'criticalityLabel' => $this->criticalityLabel($device->criticality),
+                    'lifecycle' => $device->lifecycle_status ?? 'active',
+                    'lifecycleLabel' => $this->lifecycleLabel($device->lifecycle_status),
+                    'monitoringEnabled' => (bool) $device->monitoring_enabled,
+                    'latency' => $device->last_latency_ms !== null ? (float) $device->last_latency_ms : null,
+                    'lastSeenAt' => $device->last_seen_at?->format('d/m/Y H:i:s'),
+                    'lastCheckedAt' => $device->last_checked_at?->format('d/m/Y H:i:s'),
                     'room' => $room?->nama,
                     'floor' => $floor?->nama,
                     'building' => $building?->nama,
-                    'unit' => $unit?->nama,
+                    'unit' => $locationUnit?->nama,
+                    'ownerUnit' => $ownerUnit?->nama,
                     'location' => $locationParts !== [] ? implode(' • ', $locationParts) : null,
                     'description' => $topology->keterangan ?: $device->keterangan,
                     'childrenCount' => $childrenCounts->get($topology->id, 0),
@@ -121,6 +134,27 @@ class Diagram extends Component
             str_contains($normalized, 'camera') => 'CAM',
             str_contains($normalized, 'printer') => 'PR',
             default => 'DEV',
+        };
+    }
+
+    private function criticalityLabel(?string $criticality): string
+    {
+        return match ($criticality) {
+            'critical' => 'Critical',
+            'high' => 'High',
+            'low' => 'Low',
+            default => 'Normal',
+        };
+    }
+
+    private function lifecycleLabel(?string $status): string
+    {
+        return match ($status) {
+            'spare' => 'Cadangan',
+            'repair' => 'Perbaikan',
+            'retired' => 'Pensiun',
+            'disposed' => 'Dihapuskan',
+            default => 'Aktif',
         };
     }
 }
