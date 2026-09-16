@@ -14,17 +14,13 @@ class Device extends Model
 
     protected $casts = [
         'location' => 'json',
+        'purchase_date' => 'date',
+        'warranty_until' => 'date',
+        'monitoring_enabled' => 'boolean',
+        'last_checked_at' => 'datetime',
+        'last_seen_at' => 'datetime',
+        'last_latency_ms' => 'decimal:2',
     ];
-
-    /* public function deviceLinks(): HasMany
-    {
-        return $this->hasMany(DeviceLink::class, 'device_id', 'id');
-    }
-
-    public function childrenLinks(): HasMany
-    {
-        return $this->hasMany(DeviceLink::class, 'children_id', 'id');
-    } */
 
     public function ruangan(): BelongsTo
     {
@@ -41,8 +37,18 @@ class Device extends Model
         return $this->belongsTo(TypeDevice::class, 'type_device_id', 'id');
     }
 
+    public function ownerUnit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'owner_unit_id', 'id');
+    }
+
     public function topology(): HasOne
     {
         return $this->hasOne(Topology::class, 'device_id', 'id');
+    }
+
+    public function monitoringChecks(): HasMany
+    {
+        return $this->hasMany(DeviceMonitoringCheck::class, 'device_id', 'id');
     }
 }
