@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Models\Device;
+use App\Models\DeviceMonitoringCheck;
 use App\Models\IpAddress;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,6 +37,7 @@ class SinglePingIpAddress implements ShouldQueue
 
         if (filter_var($this->ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
             $ipAddress->update(['status' => false]);
+            $this->recordDeviceChecks($ipAddress, false, null, 'Alamat IPv4 tidak valid.');
 
             Log::warning('Ping dibatalkan karena alamat IPv4 tidak valid.', [
                 'ip_address_id' => $this->ipId,
@@ -57,11 +60,23 @@ class SinglePingIpAddress implements ShouldQueue
             $process->setTimeout(5);
             $process->run();
 
+            $successful = $process->isSuccessful();
+            $output = trim($process->getOutput() . "\n" . $process->getErrorOutput());
+            $latency = $successful ? $this->extractLatency($output) : null;
+
             $ipAddress->update([
-                'status' => $process->isSuccessful(),
+                'status' => $successful,
             ]);
+
+            $this->recordDeviceChecks(
+                $ipAddress,
+                $successful,
+                $latency,
+                $successful ? null : $this->summarizeMessage($output),
+            );
         } catch (Throwable $exception) {
             $ipAddress->update(['status' => false]);
+            $this->recordDeviceChecks($ipAddress, false, null, $exception->getMessage());
 
             Log::warning('Proses ping gagal dijalankan.', [
                 'ip_address_id' => $this->ipId,
@@ -69,5 +84,65 @@ class SinglePingIpAddress implements ShouldQueue
                 'error' => $exception->getMessage(),
             ]);
         }
+    }
+
+    private function recordDeviceChecks(
+        IpAddress $ipAddress,
+        bool $successful,
+        ?float $latency,
+        ?string $message,
+    ): void {
+        $checkedAt = now();
+
+        Device::query()
+            ->where('monitoring_enabled', true)
+            ->where('ip_address_id', $ipAddress->id)
+            ->get()
+            ->each(function (Device $device) use ($ipAddress, $successful, $latency, $message, $checkedAt): void {
+                DeviceMonitoringCheck::create([
+                    'device_id' => $device->id,
+                    'device_name' => $device->nama,
+                    'ip_address' => $ipAddress->nama,
+                    'check_type' => 'icmp',
+                    'status' => $successful ? 'online' : 'offline',
+                    'latency_ms' => $latency,
+                    'message' => $message,
+                    'checked_at' => $checkedAt,
+                ]);
+
+                $updates = [
+                    'last_checked_at' => $checkedAt,
+                ];
+
+                if ($successful) {
+                    $updates['last_seen_at'] = $checkedAt;
+
+                    if ($latency !== null) {
+                        $updates['last_latency_ms'] = $latency;
+                    }
+                }
+
+                $device->forceFill($updates)->saveQuietly();
+            });
+    }
+
+    private function extractLatency(string $output): ?float
+    {
+        if (preg_match('/time[=<]([0-9.]+)\s*ms/i', $output, $matches) !== 1) {
+            return null;
+        }
+
+        return round((float) $matches[1], 2);
+    }
+
+    private function summarizeMessage(string $output): ?string
+    {
+        $message = trim(preg_replace('/\s+/', ' ', $output) ?? '');
+
+        if ($message === '') {
+            return null;
+        }
+
+        return mb_substr($message, 0, 1000);
     }
 }
