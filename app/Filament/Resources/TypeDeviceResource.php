@@ -3,15 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TypeDeviceResource\Pages;
-use App\Filament\Resources\TypeDeviceResource\RelationManagers;
 use App\Models\TypeDevice;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class TypeDeviceResource extends Resource
 {
@@ -19,12 +16,11 @@ class TypeDeviceResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-square-3-stack-3d';
     protected static ?string $navigationGroup = 'Konfigurasi';
-
     protected static ?string $navigationLabel = 'Tipe Perangkat';
     protected static ?string $modelLabel = 'Tipe Perangkat';
     protected static ?int $navigationSort = 2;
-
     protected static ?string $slug = 'tipe-perangkat';
+
     public static function form(Form $form): Form
     {
         return $form
@@ -52,6 +48,7 @@ class TypeDeviceResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('device_count')
                     ->counts('device')
+                    ->label('Perangkat')
                     ->badge(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -62,24 +59,15 @@ class TypeDeviceResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->bulkActions([]);
     }
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
