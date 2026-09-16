@@ -2,17 +2,14 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Forms;
-use Filament\Tables;
-use Filament\Forms\Form;
-use App\Models\IpAddress;
-use Filament\Tables\Table;
-use Filament\Resources\Resource;
-use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\IpAddressResource\Pages;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\IpAddress;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
-use App\Filament\Resources\IpAddressResource\RelationManagers;
 
 class IpAddressResource extends Resource
 {
@@ -22,20 +19,32 @@ class IpAddressResource extends Resource
     protected static ?string $modelLabel = 'IP Address';
     protected static ?string $navigationLabel = 'IP Address';
     protected static ?int $navigationSort = 1;
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('network_id')
+                Forms\Components\Select::make('network_id')
+                    ->relationship('network', 'address')
+                    ->label('Jaringan')
                     ->required()
-                    ->numeric(),
+                    ->searchable()
+                    ->preload(),
                 Forms\Components\TextInput::make('nama')
+                    ->label('Alamat IPv4')
                     ->required()
-                    ->maxLength(255),
+                    ->ipv4()
+                    ->maxLength(45),
                 Forms\Components\Toggle::make('status')
-                    ->required(),
+                    ->label('Online')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Status diperbarui otomatis melalui proses ping.'),
                 Forms\Components\Toggle::make('booked')
-                    ->required(),
+                    ->label('Terpakai')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('Status terpakai disinkronkan otomatis dari perangkat yang menggunakan IP ini.'),
             ]);
     }
 
@@ -44,13 +53,14 @@ class IpAddressResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('nama')
                     ->label('Alamat')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('network.address')
-                    ->label('Gateway')
-                    ->numeric()
+                    ->label('Jaringan')
+                    ->searchable()
                     ->sortable(),
                 Tables\Columns\IconColumn::make('status')
                     ->label('PING')
@@ -67,25 +77,17 @@ class IpAddressResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    ExportBulkAction::make(),
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                ExportBulkAction::make(),
             ]);
     }
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
