@@ -15,7 +15,7 @@
                         class="network-topology-control"
                         type="search"
                         autocomplete="off"
-                        placeholder="Cari nama perangkat, IP, jenis, atau lokasi..."
+                        placeholder="Cari nama perangkat, IP, asset, hostname, jenis, atau lokasi..."
                     >
                 </div>
 
@@ -99,11 +99,38 @@
                     </div>
 
                     <dl class="network-topology-detail-grid">
+                        <dt>Kode Aset</dt>
+                        <dd id="networkDetailAssetCode">—</dd>
+
+                        <dt>Hostname</dt>
+                        <dd id="networkDetailHostname">—</dd>
+
                         <dt>IP Address</dt>
                         <dd id="networkDetailIp">—</dd>
 
-                        <dt>Unit</dt>
+                        <dt>Criticality</dt>
+                        <dd id="networkDetailCriticality">—</dd>
+
+                        <dt>Lifecycle</dt>
+                        <dd id="networkDetailLifecycle">—</dd>
+
+                        <dt>Latency</dt>
+                        <dd id="networkDetailLatency">—</dd>
+
+                        <dt>Last Seen</dt>
+                        <dd id="networkDetailLastSeen">—</dd>
+
+                        <dt>Last Checked</dt>
+                        <dd id="networkDetailLastChecked">—</dd>
+
+                        <dt>Monitoring</dt>
+                        <dd id="networkDetailMonitoring">—</dd>
+
+                        <dt>Unit Lokasi</dt>
                         <dd id="networkDetailUnit">—</dd>
+
+                        <dt>Unit Pemilik</dt>
+                        <dd id="networkDetailOwnerUnit">—</dd>
 
                         <dt>Gedung</dt>
                         <dd id="networkDetailBuilding">—</dd>
@@ -132,5 +159,5 @@
     <script>
         window.networkTopologyNodes = {{ Illuminate\Support\Js::from($nodeDataArray) }};
     </script>
-    <script src="{{ asset('js/network-topology.js') }}?v=20260916-1"></script>
+    <script src="{{ asset('js/network-topology.js') }}?v=20260916-2"></script>
 </div>
