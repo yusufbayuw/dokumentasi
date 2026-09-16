@@ -8,39 +8,66 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Process;
+use Throwable;
 
 class SinglePingIpAddress implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
+    public int $tries = 2;
+    public int $timeout = 10;
 
-    public $ipAddress;
-    public $ipId;
-
-    public function __construct($ipAddress, $ipId)
-    {
-        $this->ipAddress = $ipAddress;
-        $this->ipId = $ipId;
+    public function __construct(
+        public string $ipAddress,
+        public int $ipId,
+    ) {
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        $output = exec("ping -c 1 " . $this->ipAddress, $results, $return);
+        $ipAddress = IpAddress::find($this->ipId);
 
-        if (strpos($results[4] ?? '0', ', 0% packet loss') !== false) {
-            $IpAddr = IpAddress::find($this->ipId);
-            $IpAddr->status = true;
-            $IpAddr->save();
-        } else {
-            $IpAddr = IpAddress::find($this->ipId);
-            $IpAddr->status = false;
-            $IpAddr->save();
+        if (! $ipAddress) {
+            return;
+        }
+
+        if (filter_var($this->ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+            $ipAddress->update(['status' => false]);
+
+            Log::warning('Ping dibatalkan karena alamat IPv4 tidak valid.', [
+                'ip_address_id' => $this->ipId,
+                'ip_address' => $this->ipAddress,
+            ]);
+
+            return;
+        }
+
+        try {
+            $process = new Process([
+                'ping',
+                '-c',
+                '1',
+                '-W',
+                '2',
+                $this->ipAddress,
+            ]);
+
+            $process->setTimeout(5);
+            $process->run();
+
+            $ipAddress->update([
+                'status' => $process->isSuccessful(),
+            ]);
+        } catch (Throwable $exception) {
+            $ipAddress->update(['status' => false]);
+
+            Log::warning('Proses ping gagal dijalankan.', [
+                'ip_address_id' => $this->ipId,
+                'ip_address' => $this->ipAddress,
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 }
