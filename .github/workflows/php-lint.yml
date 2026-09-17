@@ -24,6 +24,9 @@ jobs:
           find app bootstrap config database routes tests -type f -name '*.php' -print0 \
             | xargs -0 -n1 php -l
 
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
