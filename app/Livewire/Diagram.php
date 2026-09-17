@@ -3,7 +3,8 @@
 namespace App\Livewire;
 
 use App\Filament\Resources\DeviceResource;
-use App\Models\Topology;
+use App\Models\Device;
+use App\Models\DeviceConnection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
@@ -11,30 +12,52 @@ class Diagram extends Component
 {
     public function render()
     {
-        $topologies = Topology::query()
+        $devices = Device::query()
             ->with([
-                'device.ip',
-                'device.type',
-                'device.ownerUnit',
-                'device.ruangan.unit',
-                'device.ruangan.lantai.gedung',
+                'ip',
+                'type',
+                'ownerUnit',
+                'ruangan.unit',
+                'ruangan.lantai.gedung',
             ])
             ->get();
 
-        $childrenCounts = $topologies
-            ->whereNotNull('parent_id')
-            ->countBy('parent_id');
+        $deviceIds = $devices->pluck('id')->all();
 
-        $nodeDataArray = $topologies
-            ->filter(fn (Topology $topology): bool => $topology->device !== null)
-            ->map(function (Topology $topology) use ($childrenCounts): array {
-                $device = $topology->device;
+        $connections = DeviceConnection::query()
+            ->whereIn('source_device_id', $deviceIds)
+            ->whereIn('target_device_id', $deviceIds)
+            ->get();
+
+        $degreeByDevice = collect($deviceIds)
+            ->mapWithKeys(fn (int $id): array => [$id => [
+                'incoming' => 0,
+                'outgoing' => 0,
+            ]]);
+
+        foreach ($connections as $connection) {
+            if ($degreeByDevice->has($connection->source_device_id)) {
+                $value = $degreeByDevice->get($connection->source_device_id);
+                $value['outgoing']++;
+                $degreeByDevice->put($connection->source_device_id, $value);
+            }
+
+            if ($degreeByDevice->has($connection->target_device_id)) {
+                $value = $degreeByDevice->get($connection->target_device_id);
+                $value['incoming']++;
+                $degreeByDevice->put($connection->target_device_id, $value);
+            }
+        }
+
+        $nodes = $devices
+            ->map(function (Device $device) use ($degreeByDevice): array {
                 $ip = $device->ip;
                 $room = $device->ruangan;
                 $floor = $room?->lantai;
                 $building = $floor?->gedung;
                 $locationUnit = $room?->unit;
                 $ownerUnit = $device->ownerUnit;
+                $degree = $degreeByDevice->get($device->id, ['incoming' => 0, 'outgoing' => 0]);
 
                 $status = ! $ip
                     ? 'unknown'
@@ -47,8 +70,7 @@ class Diagram extends Component
                 ]);
 
                 return [
-                    'key' => $topology->id,
-                    'parent' => $topology->parent_id,
+                    'id' => 'device-' . $device->id,
                     'deviceId' => $device->id,
                     'name' => $device->nama,
                     'assetCode' => $device->asset_code,
@@ -76,8 +98,10 @@ class Diagram extends Component
                     'unit' => $locationUnit?->nama,
                     'ownerUnit' => $ownerUnit?->nama,
                     'location' => $locationParts !== [] ? implode(' • ', $locationParts) : null,
-                    'description' => $topology->keterangan ?: $device->keterangan,
-                    'childrenCount' => $childrenCounts->get($topology->id, 0),
+                    'description' => $device->keterangan,
+                    'incomingCount' => $degree['incoming'],
+                    'outgoingCount' => $degree['outgoing'],
+                    'connectionCount' => $degree['incoming'] + $degree['outgoing'],
                     'editUrl' => Gate::allows('update', $device)
                         ? DeviceResource::getUrl('edit', ['record' => $device])
                         : null,
@@ -86,7 +110,27 @@ class Diagram extends Component
             ->values()
             ->all();
 
-        $types = collect($nodeDataArray)
+        $edges = $connections
+            ->map(fn (DeviceConnection $connection): array => [
+                'id' => 'connection-' . $connection->id,
+                'connectionId' => $connection->id,
+                'source' => 'device-' . $connection->source_device_id,
+                'target' => 'device-' . $connection->target_device_id,
+                'origin' => $connection->source,
+                'connectionType' => $connection->connection_type,
+                'sourcePort' => $connection->source_port,
+                'targetPort' => $connection->target_port,
+                'speed' => $connection->speed,
+                'vlan' => $connection->vlan,
+                'isPrimary' => (bool) $connection->is_primary,
+                'status' => $connection->status,
+                'label' => $connection->label,
+                'description' => $connection->description,
+            ])
+            ->values()
+            ->all();
+
+        $types = collect($nodes)
             ->pluck('type')
             ->filter()
             ->unique()
@@ -94,7 +138,7 @@ class Diagram extends Component
             ->values()
             ->all();
 
-        $units = collect($nodeDataArray)
+        $units = collect($nodes)
             ->pluck('unit')
             ->filter()
             ->unique()
@@ -103,14 +147,16 @@ class Diagram extends Component
             ->all();
 
         $stats = [
-            'total' => count($nodeDataArray),
-            'online' => collect($nodeDataArray)->where('status', 'online')->count(),
-            'offline' => collect($nodeDataArray)->where('status', 'offline')->count(),
-            'unknown' => collect($nodeDataArray)->where('status', 'unknown')->count(),
+            'total' => count($nodes),
+            'connections' => count($edges),
+            'online' => collect($nodes)->where('status', 'online')->count(),
+            'offline' => collect($nodes)->where('status', 'offline')->count(),
+            'unknown' => collect($nodes)->where('status', 'unknown')->count(),
         ];
 
         return view('livewire.diagram', [
-            'nodeDataArray' => $nodeDataArray,
+            'nodes' => $nodes,
+            'edges' => $edges,
             'types' => $types,
             'units' => $units,
             'stats' => $stats,
@@ -128,6 +174,7 @@ class Diagram extends Component
             str_contains($normalized, 'wireless') => 'AP',
             str_contains($normalized, 'switch') => 'SW',
             str_contains($normalized, 'router') => 'RT',
+            str_contains($normalized, 'firewall') => 'FW',
             str_contains($normalized, 'server') => 'SV',
             str_contains($normalized, 'finger') => 'FP',
             str_contains($normalized, 'cctv'),
