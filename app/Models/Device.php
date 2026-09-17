@@ -52,6 +52,21 @@ class Device extends Model
         return $this->hasMany(DeviceMonitoringCheck::class, 'device_id', 'id');
     }
 
+    public function interfaces(): HasMany
+    {
+        return $this->hasMany(DeviceInterface::class, 'device_id', 'id');
+    }
+
+    public function maintenances(): HasMany
+    {
+        return $this->hasMany(DeviceMaintenance::class, 'device_id', 'id');
+    }
+
+    public function movements(): HasMany
+    {
+        return $this->hasMany(DeviceMovement::class, 'device_id', 'id');
+    }
+
     public function outgoingConnections(): HasMany
     {
         return $this->hasMany(DeviceConnection::class, 'source_device_id', 'id');
