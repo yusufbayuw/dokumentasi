@@ -1,5 +1,5 @@
 <div wire:ignore>
-    <link rel="stylesheet" href="{{ asset('css/network-topology.css') }}?v=20260917-1">
+    <link rel="stylesheet" href="{{ asset('css/network-topology.css') }}?v=20260917-2">
 
     <div id="networkTopologyShell" class="network-topology-shell">
         <div class="network-topology-toolbar">
@@ -41,9 +41,18 @@
             </div>
 
             <div class="network-topology-actions">
-                <button type="button" class="network-topology-button" data-network-action="layout-layered">Layered</button>
-                <button type="button" class="network-topology-button" data-network-action="layout-force">Force</button>
+                <div class="network-topology-segment" aria-label="Cakupan diagram">
+                    <button type="button" class="network-topology-button is-active" data-network-scope="overview" title="Tampilkan topologi inti">Inti</button>
+                    <button type="button" class="network-topology-button" data-network-scope="all" title="Tampilkan semua perangkat">Semua</button>
+                </div>
+
                 <span class="network-topology-action-divider"></span>
+
+                <button type="button" class="network-topology-button" data-network-action="layout-layered" title="Layout hierarki">Hierarki</button>
+                <button type="button" class="network-topology-button" data-network-action="layout-force" title="Layout relasi bebas">Relasi</button>
+
+                <span class="network-topology-action-divider"></span>
+
                 <button type="button" class="network-topology-button network-topology-button-square" data-network-action="zoom-out" title="Perkecil" aria-label="Perkecil">−</button>
                 <button type="button" class="network-topology-button" data-network-action="fit" title="Fit ke layar">Fit</button>
                 <button type="button" class="network-topology-button network-topology-button-square" data-network-action="zoom-in" title="Perbesar" aria-label="Perbesar">+</button>
@@ -58,7 +67,8 @@
             <span class="network-topology-stat"><span class="network-topology-dot online"></span>Online <strong>{{ $stats['online'] }}</strong></span>
             <span class="network-topology-stat"><span class="network-topology-dot offline"></span>Offline <strong>{{ $stats['offline'] }}</strong></span>
             <span class="network-topology-stat"><span class="network-topology-dot unknown"></span>Tanpa IP <strong>{{ $stats['unknown'] }}</strong></span>
-            <span class="network-topology-count">Ditampilkan: <strong id="networkVisibleCount">{{ $stats['total'] }}</strong></span>
+            <span class="network-topology-mode">Mode: <strong id="networkScopeLabel">Topologi inti</strong></span>
+            <span class="network-topology-count">Ditampilkan: <strong id="networkVisibleCount">0</strong></span>
         </div>
 
         <div class="network-topology-stage">
@@ -72,7 +82,7 @@
                 <span><i class="network-topology-dot online"></i>Online</span>
                 <span><i class="network-topology-dot offline"></i>Offline</span>
                 <span><i class="network-topology-dot unknown"></i>Unknown</span>
-                <span class="network-topology-legend-hint">Klik node untuk analisis dependency</span>
+                <span class="network-topology-legend-hint">Inti menyembunyikan endpoint massal. Cari perangkat atau klik node untuk fokus cabang.</span>
             </div>
 
             <aside id="networkDetailPanel" class="network-topology-detail" aria-hidden="true">
@@ -85,37 +95,45 @@
                 </div>
 
                 <div class="network-topology-detail-body">
-                    <div id="networkDetailStatus" class="network-topology-status">
-                        <span class="network-topology-dot unknown"></span>
-                        <span>—</span>
+                    <div class="network-topology-detail-topline">
+                        <div id="networkDetailStatus" class="network-topology-status">
+                            <span class="network-topology-dot unknown"></span>
+                            <span>—</span>
+                        </div>
+                        <span id="networkDetailIp" class="network-topology-ip">—</span>
                     </div>
 
                     <div class="network-topology-analysis-actions">
-                        <button type="button" data-network-analysis="downstream">Dampak downstream</button>
-                        <button type="button" data-network-analysis="upstream">Jalur upstream</button>
-                        <button type="button" data-network-analysis="clear">Bersihkan highlight</button>
+                        <button type="button" class="network-topology-analysis-primary" data-network-analysis="focus">Fokus cabang</button>
+                        <button type="button" data-network-analysis="downstream">Dampak</button>
+                        <button type="button" data-network-analysis="upstream">Upstream</button>
+                        <button type="button" data-network-analysis="clear">Bersihkan</button>
                     </div>
 
-                    <dl class="network-topology-detail-grid">
-                        <dt>Kode Aset</dt><dd id="networkDetailAssetCode">—</dd>
-                        <dt>Hostname</dt><dd id="networkDetailHostname">—</dd>
-                        <dt>IP Address</dt><dd id="networkDetailIp">—</dd>
-                        <dt>Criticality</dt><dd id="networkDetailCriticality">—</dd>
-                        <dt>Lifecycle</dt><dd id="networkDetailLifecycle">—</dd>
-                        <dt>Latency</dt><dd id="networkDetailLatency">—</dd>
-                        <dt>Last Seen</dt><dd id="networkDetailLastSeen">—</dd>
-                        <dt>Last Checked</dt><dd id="networkDetailLastChecked">—</dd>
-                        <dt>Monitoring</dt><dd id="networkDetailMonitoring">—</dd>
-                        <dt>Unit Lokasi</dt><dd id="networkDetailUnit">—</dd>
-                        <dt>Unit Pemilik</dt><dd id="networkDetailOwnerUnit">—</dd>
-                        <dt>Gedung</dt><dd id="networkDetailBuilding">—</dd>
-                        <dt>Lantai</dt><dd id="networkDetailFloor">—</dd>
-                        <dt>Ruangan</dt><dd id="networkDetailRoom">—</dd>
+                    <dl class="network-topology-detail-grid network-topology-detail-grid-primary">
+                        <dt>Lokasi</dt><dd><span id="networkDetailRoom">—</span><span class="network-topology-location-separator"> • </span><span id="networkDetailBuilding">—</span></dd>
+                        <dt>Unit</dt><dd id="networkDetailUnit">—</dd>
                         <dt>Upstream</dt><dd id="networkDetailIncoming">—</dd>
                         <dt>Downstream</dt><dd id="networkDetailOutgoing">—</dd>
-                        <dt>Potensi Dampak</dt><dd id="networkDetailImpact">—</dd>
-                        <dt>Keterangan</dt><dd id="networkDetailDescription">—</dd>
+                        <dt>Dampak</dt><dd id="networkDetailImpact">—</dd>
                     </dl>
+
+                    <details class="network-topology-more">
+                        <summary>Detail perangkat & monitoring</summary>
+                        <dl class="network-topology-detail-grid">
+                            <dt>Kode Aset</dt><dd id="networkDetailAssetCode">—</dd>
+                            <dt>Hostname</dt><dd id="networkDetailHostname">—</dd>
+                            <dt>Criticality</dt><dd id="networkDetailCriticality">—</dd>
+                            <dt>Lifecycle</dt><dd id="networkDetailLifecycle">—</dd>
+                            <dt>Latency</dt><dd id="networkDetailLatency">—</dd>
+                            <dt>Last Seen</dt><dd id="networkDetailLastSeen">—</dd>
+                            <dt>Last Checked</dt><dd id="networkDetailLastChecked">—</dd>
+                            <dt>Monitoring</dt><dd id="networkDetailMonitoring">—</dd>
+                            <dt>Unit Pemilik</dt><dd id="networkDetailOwnerUnit">—</dd>
+                            <dt>Lantai</dt><dd id="networkDetailFloor">—</dd>
+                            <dt>Keterangan</dt><dd id="networkDetailDescription">—</dd>
+                        </dl>
+                    </details>
 
                     <a id="networkDetailEdit" class="network-topology-edit-link" href="#">Buka detail perangkat</a>
                 </div>
