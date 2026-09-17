@@ -14,24 +14,12 @@ function getPalette() {
 
     return dark
         ? {
-            canvas: '#0f172a',
-            node: '#111827',
-            nodeMuted: '#1e293b',
-            border: '#334155',
-            text: '#f8fafc',
-            muted: '#94a3b8',
-            edge: '#64748b',
-            primary: '#60a5fa',
+            canvas: '#0f172a', node: '#111827', nodeMuted: '#1e293b', border: '#334155',
+            text: '#f8fafc', muted: '#94a3b8', edge: '#64748b', primary: '#60a5fa',
         }
         : {
-            canvas: '#f8fafc',
-            node: '#ffffff',
-            nodeMuted: '#f1f5f9',
-            border: '#cbd5e1',
-            text: '#0f172a',
-            muted: '#64748b',
-            edge: '#94a3b8',
-            primary: '#2563eb',
+            canvas: '#f8fafc', node: '#ffffff', nodeMuted: '#f1f5f9', border: '#cbd5e1',
+            text: '#0f172a', muted: '#64748b', edge: '#94a3b8', primary: '#2563eb',
         };
 }
 
@@ -43,11 +31,11 @@ function graphStyles(palette) {
                 'background-color': palette.node,
                 'border-width': 2,
                 'border-color': palette.border,
-                'width': 220,
-                'height': 78,
-                'shape': 'round-rectangle',
-                'label': 'data(displayLabel)',
-                'color': palette.text,
+                width: 220,
+                height: 78,
+                shape: 'round-rectangle',
+                label: 'data(displayLabel)',
+                color: palette.text,
                 'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                 'font-size': 11,
                 'font-weight': 600,
@@ -55,27 +43,16 @@ function graphStyles(palette) {
                 'text-max-width': 190,
                 'text-valign': 'center',
                 'text-halign': 'center',
+                'min-zoomed-font-size': 8,
                 'overlay-opacity': 0,
                 'transition-property': 'opacity, border-width, border-color, background-color',
                 'transition-duration': '140ms',
             },
         },
-        {
-            selector: 'node[status = "online"]',
-            style: { 'border-color': statusColors.online },
-        },
-        {
-            selector: 'node[status = "offline"]',
-            style: { 'border-color': statusColors.offline },
-        },
-        {
-            selector: 'node[status = "unknown"]',
-            style: { 'border-color': statusColors.unknown },
-        },
-        {
-            selector: 'node[criticality = "critical"]',
-            style: { 'border-width': 4 },
-        },
+        { selector: 'node[status = "online"]', style: { 'border-color': statusColors.online } },
+        { selector: 'node[status = "offline"]', style: { 'border-color': statusColors.offline } },
+        { selector: 'node[status = "unknown"]', style: { 'border-color': statusColors.unknown } },
+        { selector: 'node[criticality = "critical"]', style: { 'border-width': 4 } },
         {
             selector: 'node:selected',
             style: {
@@ -87,7 +64,7 @@ function graphStyles(palette) {
         {
             selector: 'edge',
             style: {
-                'width': 1.8,
+                width: 1.8,
                 'line-color': palette.edge,
                 'target-arrow-color': palette.edge,
                 'target-arrow-shape': 'triangle',
@@ -95,10 +72,11 @@ function graphStyles(palette) {
                 'taxi-direction': 'downward',
                 'taxi-turn': 24,
                 'arrow-scale': 0.8,
-                'opacity': 0.85,
-                'label': 'data(displayLabel)',
+                opacity: 0.85,
+                label: 'data(displayLabel)',
                 'font-size': 8,
-                'color': palette.muted,
+                color: palette.muted,
+                'min-zoomed-font-size': 9,
                 'text-background-color': palette.canvas,
                 'text-background-opacity': 0.9,
                 'text-background-padding': 2,
@@ -108,38 +86,21 @@ function graphStyles(palette) {
                 'transition-duration': '140ms',
             },
         },
-        {
-            selector: 'edge[status != "active"]',
-            style: {
-                'line-style': 'dashed',
-                'opacity': 0.45,
-            },
-        },
-        {
-            selector: 'edge[isPrimary = 0]',
-            style: {
-                'line-style': 'dashed',
-            },
-        },
-        {
-            selector: '.analysis-muted',
-            style: { 'opacity': 0.1 },
-        },
+        { selector: 'edge[status != "active"]', style: { 'line-style': 'dashed', opacity: 0.45 } },
+        { selector: 'edge[isPrimary = 0]', style: { 'line-style': 'dashed' } },
+        { selector: '.analysis-muted', style: { opacity: 0.1 } },
         {
             selector: '.analysis-focus',
             style: {
-                'opacity': 1,
+                opacity: 1,
                 'border-color': palette.primary,
                 'line-color': palette.primary,
                 'target-arrow-color': palette.primary,
-                'width': 3.5,
+                width: 3.5,
                 'z-index': 999,
             },
         },
-        {
-            selector: '.search-context',
-            style: { 'opacity': 0.45 },
-        },
+        { selector: '.search-context', style: { opacity: 0.45 } },
     ];
 }
 
@@ -175,9 +136,7 @@ function bootNetworkTopology() {
     const container = document.getElementById('networkGraph');
     const data = window.networkTopologyData;
 
-    if (! container || ! data) {
-        return;
-    }
+    if (!container || !data) return;
 
     if (window.networkTopologyCy) {
         window.networkTopologyCy.destroy();
@@ -185,14 +144,12 @@ function bootNetworkTopology() {
     }
 
     const palette = getPalette();
-    const elements = [
-        ...(data.nodes || []).map(nodeElement),
-        ...(data.edges || []).map(edgeElement),
-    ];
-
     const cy = cytoscape({
         container,
-        elements,
+        elements: [
+            ...(data.nodes || []).map(nodeElement),
+            ...(data.edges || []).map(edgeElement),
+        ],
         style: graphStyles(palette),
         minZoom: 0.08,
         maxZoom: 2.6,
@@ -219,29 +176,36 @@ function bootNetworkTopology() {
     let selectedNode = null;
     let filterTimer = null;
 
-    function runLayout(name = activeLayout, fit = true) {
-        activeLayout = name;
+    function focusCore() {
+        const roots = cy.nodes(':visible').filter((node) => node.indegree() === 0 && node.outdegree() > 0);
+        const ranked = [...roots].sort((a, b) => b.outdegree() - a.outdegree()).slice(0, 5);
+        let focus = cy.collection();
 
+        ranked.forEach((root) => {
+            focus = focus.union(root).union(root.outgoers());
+        });
+
+        if (focus.length === 0) {
+            focus = cy.nodes(':visible').slice(0, Math.min(12, cy.nodes(':visible').length));
+        }
+
+        if (focus.length > 0) {
+            cy.fit(focus, 100);
+        }
+    }
+
+    function runLayout(name = activeLayout, fit = true, focusAfter = false) {
+        activeLayout = name;
         const visibleElements = cy.elements(':visible');
+
         const layout = name === 'force'
             ? visibleElements.layout({
-                name: 'cose',
-                animate: false,
-                fit,
-                padding: 70,
-                nodeRepulsion: 900000,
-                idealEdgeLength: 130,
-                edgeElasticity: 80,
-                gravity: 0.3,
-                numIter: 700,
-                randomize: true,
+                name: 'cose', animate: false, fit, padding: 70,
+                nodeRepulsion: 900000, idealEdgeLength: 130, edgeElasticity: 80,
+                gravity: 0.3, numIter: 700, randomize: true,
             })
             : visibleElements.layout({
-                name: 'elk',
-                animate: false,
-                fit,
-                padding: 70,
-                nodeDimensionsIncludeLabels: true,
+                name: 'elk', animate: false, fit, padding: 70, nodeDimensionsIncludeLabels: true,
                 elk: {
                     algorithm: 'layered',
                     'elk.direction': 'DOWN',
@@ -252,6 +216,10 @@ function bootNetworkTopology() {
                     'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
                 },
             });
+
+        if (focusAfter) {
+            layout.one('layoutstop', focusCore);
+        }
 
         layout.run();
     }
@@ -272,28 +240,19 @@ function bootNetworkTopology() {
         cy.batch(() => {
             cy.elements().show().removeClass('search-context');
 
-            if (! hasFilter) {
-                return;
-            }
+            if (!hasFilter) return;
 
             const matched = cy.nodes().filter((node) => {
                 const d = node.data();
                 const haystack = [
-                    d.name,
-                    d.ip,
-                    d.assetCode,
-                    d.hostname,
-                    d.type,
-                    d.unit,
-                    d.ownerUnit,
-                    d.location,
-                    d.description,
+                    d.name, d.ip, d.assetCode, d.hostname, d.type,
+                    d.unit, d.ownerUnit, d.location, d.description,
                 ].filter(Boolean).join(' ').toLowerCase();
 
-                return (! query || haystack.includes(query))
-                    && (! type || d.type === type)
-                    && (! unit || d.unit === unit)
-                    && (! status || d.status === status);
+                return (!query || haystack.includes(query))
+                    && (!type || d.type === type)
+                    && (!unit || d.unit === unit)
+                    && (!status || d.status === status);
             });
 
             let context = matched;
@@ -308,7 +267,9 @@ function bootNetworkTopology() {
         });
 
         const shownNodes = cy.nodes(':visible');
-        visibleCount.textContent = hasFilter ? shownNodes.filter(':not(.search-context)').length : cy.nodes().length;
+        visibleCount.textContent = hasFilter
+            ? shownNodes.filter(':not(.search-context)').length
+            : cy.nodes().length;
         emptyState?.classList.toggle('is-visible', hasFilter && shownNodes.length === 0);
 
         if (relayout && shownNodes.length > 0) {
@@ -323,15 +284,9 @@ function bootNetworkTopology() {
 
     function impactSummary(node) {
         const downstream = node.successors('node');
-        const units = new Set(
-            downstream
-                .map((item) => item.data('unit'))
-                .filter(Boolean),
-        );
+        const units = new Set(downstream.map((item) => item.data('unit')).filter(Boolean));
 
-        if (downstream.length === 0) {
-            return 'Tidak ada perangkat downstream';
-        }
+        if (downstream.length === 0) return 'Tidak ada perangkat downstream';
 
         return `${downstream.length} perangkat${units.size ? ` / ${units.size} unit` : ''}`;
     }
@@ -385,14 +340,13 @@ function bootNetworkTopology() {
         selectedNode = null;
         clearAnalysis();
         cy.$(':selected').unselect();
-
         const panel = document.getElementById('networkDetailPanel');
         panel?.classList.remove('is-open');
         panel?.setAttribute('aria-hidden', 'true');
     }
 
     function highlightDirection(direction) {
-        if (! selectedNode) return;
+        if (!selectedNode) return;
 
         clearAnalysis();
         const related = direction === 'upstream'
@@ -411,9 +365,7 @@ function bootNetworkTopology() {
     });
 
     cy.on('tap', (event) => {
-        if (event.target === cy) {
-            closeDetail();
-        }
+        if (event.target === cy) closeDetail();
     });
 
     [typeFilter, unitFilter, statusFilter].forEach((control) => {
@@ -426,9 +378,7 @@ function bootNetworkTopology() {
     });
 
     search?.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            applyFilters({ relayout: true });
-        }
+        if (event.key === 'Enter') applyFilters({ relayout: true });
     });
 
     document.querySelectorAll('[data-network-action]').forEach((button) => {
@@ -443,8 +393,7 @@ function bootNetworkTopology() {
 
             if (action === 'fullscreen') {
                 const shell = document.getElementById('networkTopologyShell');
-
-                if (! document.fullscreenElement) shell?.requestFullscreen?.();
+                if (!document.fullscreenElement) shell?.requestFullscreen?.();
                 else document.exitFullscreen?.();
             }
 
@@ -454,7 +403,8 @@ function bootNetworkTopology() {
                 if (unitFilter) unitFilter.value = '';
                 if (statusFilter) statusFilter.value = '';
                 closeDetail();
-                applyFilters({ relayout: true });
+                applyFilters({ relayout: false });
+                runLayout('layered', false, true);
             }
         });
     });
@@ -462,7 +412,6 @@ function bootNetworkTopology() {
     document.querySelectorAll('[data-network-analysis]').forEach((button) => {
         button.addEventListener('click', () => {
             const action = button.dataset.networkAnalysis;
-
             if (action === 'downstream') highlightDirection('downstream');
             if (action === 'upstream') highlightDirection('upstream');
             if (action === 'clear') clearAnalysis();
@@ -479,18 +428,17 @@ function bootNetworkTopology() {
     });
 
     const themeObserver = new MutationObserver((mutations) => {
-        if (! mutations.some((mutation) => mutation.attributeName === 'class')) return;
-
+        if (!mutations.some((mutation) => mutation.attributeName === 'class')) return;
         const nextPalette = getPalette();
         container.style.background = nextPalette.canvas;
         cy.style(graphStyles(nextPalette));
     });
 
-    themeObserver.observe(document.documentElement, { attributes: true });
     window.networkTopologyThemeObserver?.disconnect?.();
+    themeObserver.observe(document.documentElement, { attributes: true });
     window.networkTopologyThemeObserver = themeObserver;
 
-    runLayout('layered', true);
+    runLayout('layered', false, true);
 }
 
 if (document.readyState === 'loading') {
