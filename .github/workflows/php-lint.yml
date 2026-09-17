@@ -24,5 +24,13 @@ jobs:
           find app bootstrap config database routes tests -type f -name '*.php' -print0 \
             | xargs -0 -n1 php -l
 
-      - name: Check topology JavaScript syntax
-        run: node --check public/js/network-topology.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build Vite assets
+        run: npm run build
