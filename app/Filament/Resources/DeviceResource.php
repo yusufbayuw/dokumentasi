@@ -345,8 +345,6 @@ class DeviceResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     ExportBulkAction::make(),
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->requiresConfirmation(),
                 ]),
             ]);
     }
