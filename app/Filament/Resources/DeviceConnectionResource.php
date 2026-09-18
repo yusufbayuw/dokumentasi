@@ -39,7 +39,7 @@ class DeviceConnectionResource extends Resource
                             ->searchable()
                             ->preload()
                             ->reactive()
-                            ->afterStateUpdated(fn (Set $set): mixed => $set('source_interface_id', null))
+                            ->afterStateUpdated(fn (Set $set) => $set('source_interface_id', null))
                             ->required()
                             ->rules(['different:target_device_id']),
                         Forms\Components\Select::make('source_interface_id')
@@ -59,7 +59,7 @@ class DeviceConnectionResource extends Resource
                             ->searchable()
                             ->preload()
                             ->reactive()
-                            ->afterStateUpdated(fn (Set $set): mixed => $set('target_interface_id', null))
+                            ->afterStateUpdated(fn (Set $set) => $set('target_interface_id', null))
                             ->required()
                             ->rules(['different:source_device_id']),
                         Forms\Components\Select::make('target_interface_id')
