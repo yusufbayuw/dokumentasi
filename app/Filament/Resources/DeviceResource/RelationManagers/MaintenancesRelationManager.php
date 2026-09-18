@@ -73,13 +73,6 @@ class MaintenancesRelationManager extends RelationManager
         ])->columns(2);
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        $data['created_by'] = auth()->id();
-
-        return $data;
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -135,7 +128,12 @@ class MaintenancesRelationManager extends RelationManager
                     ->toggleable(),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->mutateFormDataUsing(function (array $data): array {
+                        $data['created_by'] = auth()->id();
+
+                        return $data;
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
