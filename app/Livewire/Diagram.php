@@ -25,6 +25,7 @@ class Diagram extends Component
         $deviceIds = $devices->pluck('id')->all();
 
         $connections = DeviceConnection::query()
+            ->with(['sourceInterface', 'targetInterface'])
             ->whereIn('source_device_id', $deviceIds)
             ->whereIn('target_device_id', $deviceIds)
             ->get();
@@ -118,8 +119,8 @@ class Diagram extends Component
                 'target' => 'device-' . $connection->target_device_id,
                 'origin' => $connection->source,
                 'connectionType' => $connection->connection_type,
-                'sourcePort' => $connection->source_port,
-                'targetPort' => $connection->target_port,
+                'sourcePort' => $connection->sourceInterface?->name ?? $connection->source_port,
+                'targetPort' => $connection->targetInterface?->name ?? $connection->target_port,
                 'speed' => $connection->speed,
                 'vlan' => $connection->vlan,
                 'isPrimary' => (bool) $connection->is_primary,
