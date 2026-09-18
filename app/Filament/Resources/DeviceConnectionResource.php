@@ -4,8 +4,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\DeviceConnectionResource\Pages;
 use App\Models\DeviceConnection;
+use App\Models\DeviceInterface;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -35,15 +38,41 @@ class DeviceConnectionResource extends Resource
                             ->label('Perangkat Sumber / Upstream')
                             ->searchable()
                             ->preload()
+                            ->reactive()
+                            ->afterStateUpdated(fn (Set $set): mixed => $set('source_interface_id', null))
                             ->required()
                             ->rules(['different:target_device_id']),
+                        Forms\Components\Select::make('source_interface_id')
+                            ->label('Interface Sumber')
+                            ->options(fn (Get $get): array => DeviceInterface::query()
+                                ->where('device_id', $get('source_device_id'))
+                                ->orderByDesc('is_management')
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->disabled(fn (Get $get): bool => ! filled($get('source_device_id')))
+                            ->helperText('Opsional. Pilih interface terstruktur jika sudah tersedia.'),
                         Forms\Components\Select::make('target_device_id')
                             ->relationship('targetDevice', 'nama')
                             ->label('Perangkat Tujuan / Downstream')
                             ->searchable()
                             ->preload()
+                            ->reactive()
+                            ->afterStateUpdated(fn (Set $set): mixed => $set('target_interface_id', null))
                             ->required()
                             ->rules(['different:source_device_id']),
+                        Forms\Components\Select::make('target_interface_id')
+                            ->label('Interface Tujuan')
+                            ->options(fn (Get $get): array => DeviceInterface::query()
+                                ->where('device_id', $get('target_device_id'))
+                                ->orderByDesc('is_management')
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->disabled(fn (Get $get): bool => ! filled($get('target_device_id')))
+                            ->helperText('Opsional. Pilih interface terstruktur jika sudah tersedia.'),
                         Forms\Components\Hidden::make('source')
                             ->default('manual'),
                         Forms\Components\Select::make('connection_type')
@@ -59,10 +88,12 @@ class DeviceConnectionResource extends Resource
                             ->default('ethernet')
                             ->required(),
                         Forms\Components\TextInput::make('source_port')
-                            ->label('Port Sumber')
+                            ->label('Port Sumber (Legacy / Fallback)')
+                            ->helperText('Dipertahankan untuk koneksi lama. Kosongkan bila sudah memilih Interface Sumber.')
                             ->maxLength(255),
                         Forms\Components\TextInput::make('target_port')
-                            ->label('Port Tujuan')
+                            ->label('Port Tujuan (Legacy / Fallback)')
+                            ->helperText('Dipertahankan untuk koneksi lama. Kosongkan bila sudah memilih Interface Tujuan.')
                             ->maxLength(255),
                         Forms\Components\TextInput::make('speed')
                             ->label('Kecepatan')
@@ -106,6 +137,14 @@ class DeviceConnectionResource extends Resource
                     ->label('Tujuan / Downstream')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('sourceInterface.name')
+                    ->label('Interface Sumber')
+                    ->placeholder('-')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('targetInterface.name')
+                    ->label('Interface Tujuan')
+                    ->placeholder('-')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('connection_type')
                     ->label('Jenis')
                     ->badge(),
