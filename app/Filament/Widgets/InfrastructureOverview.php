@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Device;
+use App\Models\DeviceMaintenance;
 use App\Models\Network;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -36,6 +37,11 @@ class InfrastructureOverview extends BaseWidget
             ->whereNotNull('warranty_until')
             ->whereBetween('warranty_until', [today(), today()->addDays(90)])
             ->count();
+        $maintenanceOverdue = DeviceMaintenance::query()
+            ->whereNotNull('next_due_at')
+            ->where('next_due_at', '<', now())
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->count();
 
         return [
             Stat::make('Total Perangkat', number_format($total))
@@ -57,6 +63,10 @@ class InfrastructureOverview extends BaseWidget
                 ->description('Perlu ditinjau untuk renewal/penggantian')
                 ->color($warrantyExpiring > 0 ? 'warning' : 'gray')
                 ->icon('heroicon-o-calendar-days'),
+            Stat::make('Maintenance Terlewat', number_format($maintenanceOverdue))
+                ->description('Jadwal maintenance yang perlu ditindaklanjuti')
+                ->color($maintenanceOverdue > 0 ? 'warning' : 'success')
+                ->icon('heroicon-o-wrench-screwdriver'),
             Stat::make('Network', number_format(Network::query()->count()))
                 ->description('Subnet yang terdokumentasi')
                 ->color('info')
