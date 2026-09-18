@@ -8,6 +8,8 @@ class Diagram extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-share';
     protected static ?string $navigationLabel = 'Diagram Jaringan';
+    protected static ?int $navigationSort = 5;
+    protected static ?string $navigationGroup = 'Infrastruktur';
     protected static string $view = 'filament.pages.diagram';
 
     public static function canAccess(): bool
