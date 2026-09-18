@@ -19,7 +19,7 @@ class UnitResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
 
-    protected static ?string $navigationGroup = 'Konfigurasi';
+    protected static ?string $navigationGroup = 'Lokasi';
 
     protected static ?string $navigationLabel = 'Unit';
 
