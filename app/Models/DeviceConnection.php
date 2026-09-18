@@ -12,7 +12,9 @@ class DeviceConnection extends Model
 
     protected $fillable = [
         'source_device_id',
+        'source_interface_id',
         'target_device_id',
+        'target_interface_id',
         'source',
         'connection_type',
         'source_port',
@@ -34,8 +36,18 @@ class DeviceConnection extends Model
         return $this->belongsTo(Device::class, 'source_device_id');
     }
 
+    public function sourceInterface(): BelongsTo
+    {
+        return $this->belongsTo(DeviceInterface::class, 'source_interface_id');
+    }
+
     public function targetDevice(): BelongsTo
     {
         return $this->belongsTo(Device::class, 'target_device_id');
+    }
+
+    public function targetInterface(): BelongsTo
+    {
+        return $this->belongsTo(DeviceInterface::class, 'target_interface_id');
     }
 }
