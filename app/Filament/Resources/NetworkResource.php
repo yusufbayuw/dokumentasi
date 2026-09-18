@@ -19,9 +19,9 @@ class NetworkResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-wifi';
     protected static ?string $modelLabel = 'Jaringan';
-    protected static ?string $navigationGroup = 'Konfigurasi';
+    protected static ?string $navigationGroup = 'Infrastruktur';
     protected static ?string $navigationLabel = 'Jaringan';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
     protected static ?string $slug = 'jaringan';
 
     public static function form(Form $form): Form
