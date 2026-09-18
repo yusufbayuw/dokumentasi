@@ -18,11 +18,11 @@ class GedungResource extends Resource
     protected static ?string $model = Gedung::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
-    protected static ?string $navigationGroup = 'Konfigurasi';
+    protected static ?string $navigationGroup = 'Lokasi';
 
     protected static ?string $navigationLabel = 'Gedung';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $slug = 'gedung';
     public static function form(Form $form): Form
