@@ -10,6 +10,7 @@ use App\Filament\Resources\DeviceResource\RelationManagers\MovementsRelationMana
 use App\Forms\Components\LeafletMap;
 use App\Models\Device;
 use App\Models\Ruangan;
+use App\Services\ActivityLogger;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -311,6 +312,14 @@ class DeviceResource extends Resource
                                 'ip_address' => $ip,
                                 'user_id' => auth()->id(),
                             ]);
+
+                            app(ActivityLogger::class)->log(
+                                'device.reboot',
+                                $device,
+                                [],
+                                ['ip_address' => $ip],
+                                'Perintah reboot dikirim dari aplikasi.',
+                            );
 
                             Notification::make()
                                 ->title('Perintah reboot dikirim')
