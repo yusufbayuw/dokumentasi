@@ -3,7 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\DeviceResource\Pages;
+use App\Filament\Resources\DeviceResource\RelationManagers\InterfacesRelationManager;
+use App\Filament\Resources\DeviceResource\RelationManagers\MaintenancesRelationManager;
 use App\Filament\Resources\DeviceResource\RelationManagers\MonitoringChecksRelationManager;
+use App\Filament\Resources\DeviceResource\RelationManagers\MovementsRelationManager;
 use App\Forms\Components\LeafletMap;
 use App\Models\Device;
 use App\Models\Ruangan;
@@ -26,7 +29,8 @@ class DeviceResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
     protected static ?string $modelLabel = 'Perangkat';
     protected static ?string $navigationLabel = 'Perangkat';
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationGroup = 'Infrastruktur';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
@@ -341,7 +345,10 @@ class DeviceResource extends Resource
     public static function getRelations(): array
     {
         return [
+            InterfacesRelationManager::class,
             MonitoringChecksRelationManager::class,
+            MaintenancesRelationManager::class,
+            MovementsRelationManager::class,
         ];
     }
 
