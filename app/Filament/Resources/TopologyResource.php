@@ -22,6 +22,7 @@ class TopologyResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $modelLabel = 'Topologi';
     protected static ?string $navigationLabel = 'Topologi';
+    protected static bool $shouldRegisterNavigation = false;
     public static function form(Form $form): Form
     {
         return $form
