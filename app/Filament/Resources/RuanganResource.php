@@ -18,11 +18,11 @@ class RuanganResource extends Resource
     protected static ?string $model = Ruangan::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
-    protected static ?string $navigationGroup = 'Konfigurasi';
+    protected static ?string $navigationGroup = 'Lokasi';
 
     protected static ?string $navigationLabel = 'Ruangan';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 4;
 
     protected static ?string $slug = 'ruangan';
 
