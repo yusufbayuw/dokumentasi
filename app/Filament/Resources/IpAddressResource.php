@@ -18,7 +18,8 @@ class IpAddressResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
     protected static ?string $modelLabel = 'IP Address';
     protected static ?string $navigationLabel = 'IP Address';
-    protected static ?int $navigationSort = 1;
+    protected static ?string $navigationGroup = 'Infrastruktur';
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
