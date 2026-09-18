@@ -16,7 +16,7 @@ class DeviceConnectionResource extends Resource
     protected static ?string $model = DeviceConnection::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-link';
-    protected static ?string $navigationGroup = 'Konfigurasi';
+    protected static ?string $navigationGroup = 'Infrastruktur';
     protected static ?string $navigationLabel = 'Koneksi Jaringan';
     protected static ?string $modelLabel = 'Koneksi Jaringan';
     protected static ?string $pluralModelLabel = 'Koneksi Jaringan';
