@@ -18,11 +18,11 @@ class LantaiResource extends Resource
     protected static ?string $model = Lantai::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-map';
-    protected static ?string $navigationGroup = 'Konfigurasi';
+    protected static ?string $navigationGroup = 'Lokasi';
 
     protected static ?string $navigationLabel = 'Lantai';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $slug = 'lantai';
     public static function form(Form $form): Form
