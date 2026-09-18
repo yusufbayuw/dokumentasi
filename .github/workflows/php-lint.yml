@@ -6,6 +6,10 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: code-lint-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   code-lint:
     runs-on: ubuntu-latest
