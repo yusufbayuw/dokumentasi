@@ -2,75 +2,36 @@
 
 namespace App\Console;
 
+use App\Jobs\PingIpAddress;
+use App\Jobs\RestartFingerprintDevice;
 use App\Models\Device;
-use App\Models\TypeDevice;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use Illuminate\Support\Facades\Log;
-use Rats\Zkteco\Lib\ZKTeco;
-use Throwable;
 
 class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
+        $minutes = max(1, min(60, (int) config('cmdb.monitoring.schedule_minutes', 5)));
+
+        $schedule->job(new PingIpAddress())
+            ->cron("*/{$minutes} * * * *")
+            ->name('monitor-infrastructure')
+            ->withoutOverlapping(10);
+
         $schedule->call(function (): void {
-            $fingerPrintTypeId = TypeDevice::query()
-                ->where('nama', 'Finger Print')
-                ->value('id');
-
-            if (! $fingerPrintTypeId) {
-                Log::warning('Scheduled fingerprint reboot dilewati karena tipe perangkat Finger Print tidak ditemukan.');
-
-                return;
-            }
-
             Device::query()
-                ->with('ip')
-                ->where('type_device_id', $fingerPrintTypeId)
+                ->where('auto_reboot_enabled', true)
+                ->whereHas('type', fn ($query) => $query->where('nama', 'like', '%Finger%'))
                 ->whereNotNull('ip_address_id')
-                ->get()
-                ->each(function (Device $device): void {
-                    $ip = $device->ip?->nama;
-
-                    if (! $ip || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
-                        Log::warning('Scheduled fingerprint reboot dilewati karena IPv4 tidak valid.', [
-                            'device_id' => $device->id,
-                            'ip_address' => $ip,
-                        ]);
-
-                        return;
-                    }
-
-                    try {
-                        $zk = new ZKTeco($ip);
-                        $connected = $zk->connect();
-
-                        if ($connected === false) {
-                            Log::warning('Scheduled fingerprint reboot gagal terhubung.', [
-                                'device_id' => $device->id,
-                                'ip_address' => $ip,
-                            ]);
-
-                            return;
-                        }
-
-                        $zk->restart();
-
-                        Log::info('Scheduled fingerprint reboot berhasil dikirim.', [
-                            'device_id' => $device->id,
-                            'ip_address' => $ip,
-                        ]);
-                    } catch (Throwable $exception) {
-                        Log::error('Scheduled fingerprint reboot gagal.', [
-                            'device_id' => $device->id,
-                            'ip_address' => $ip,
-                            'error' => $exception->getMessage(),
-                        ]);
-                    }
-                });
+                ->pluck('id')
+                ->each(fn (int $deviceId) => RestartFingerprintDevice::dispatch(
+                    $deviceId,
+                    null,
+                    'scheduled',
+                )->onQueue('device-actions'));
         })
-            ->name('restart-fingerprint-devices')
+            ->name('restart-opted-in-fingerprint-devices')
             ->dailyAt('03:00')
             ->withoutOverlapping(30);
     }
