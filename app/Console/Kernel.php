@@ -5,6 +5,7 @@ namespace App\Console;
 use App\Jobs\PingIpAddress;
 use App\Jobs\RestartFingerprintDevice;
 use App\Models\Device;
+use App\Models\DeviceMonitoringCheck;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -23,7 +24,12 @@ class Kernel extends ConsoleKernel
             Device::query()
                 ->where('auto_reboot_enabled', true)
                 ->whereHas('type', fn ($query) => $query->where('nama', 'like', '%Finger%'))
-                ->whereNotNull('ip_address_id')
+                ->where(function ($query): void {
+                    $query->whereNotNull('ip_address_id')
+                        ->orWhereHas('interfaces', fn ($interfaceQuery) => $interfaceQuery
+                            ->where('is_management', true)
+                            ->whereNotNull('ip_address_id'));
+                })
                 ->pluck('id')
                 ->each(fn (int $deviceId) => RestartFingerprintDevice::dispatch(
                     $deviceId,
@@ -33,6 +39,17 @@ class Kernel extends ConsoleKernel
         })
             ->name('restart-opted-in-fingerprint-devices')
             ->dailyAt('03:00')
+            ->withoutOverlapping(30);
+
+        $schedule->call(function (): void {
+            $retentionDays = max(7, (int) config('cmdb.monitoring.history_retention_days', 90));
+
+            DeviceMonitoringCheck::query()
+                ->where('checked_at', '<', now()->subDays($retentionDays))
+                ->delete();
+        })
+            ->name('prune-monitoring-history')
+            ->dailyAt('02:30')
             ->withoutOverlapping(30);
     }
 
