@@ -14,9 +14,10 @@ class ActivityLogger
         array $oldValues = [],
         array $newValues = [],
         ?string $description = null,
+        ?int $userId = null,
     ): void {
         ActivityLog::query()->create([
-            'user_id' => auth()->id(),
+            'user_id' => $userId ?? auth()->id(),
             'action' => $action,
             'subject_type' => $subject ? $subject::class : null,
             'subject_id' => $subject?->getKey(),
