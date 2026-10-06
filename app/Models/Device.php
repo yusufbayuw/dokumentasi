@@ -65,6 +65,13 @@ class Device extends Model
         return $this->hasMany(DeviceInterface::class, 'device_id', 'id');
     }
 
+    public function managementInterface(): HasOne
+    {
+        return $this->hasOne(DeviceInterface::class, 'device_id', 'id')
+            ->where('is_management', true)
+            ->latestOfMany();
+    }
+
     public function credentials(): HasMany
     {
         return $this->hasMany(DeviceCredential::class, 'device_id', 'id');
