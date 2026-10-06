@@ -128,6 +128,7 @@ Pemeriksaan meliputi konflik IP lintas device/interface, booked mismatch, IP di 
 ## Keamanan dan Lifecycle
 
 - akun dapat dinonaktifkan melalui `users.is_active`; user nonaktif ditolak panel;
+- 2FA Breezy tersedia secara opt-in dari profil pengguna; aktifkan untuk admin/operator sensitif sebelum enforcement penuh;
 - login terakhir dan waktu perubahan password dicatat;
 - credential perangkat baru disimpan terenkripsi dan tidak boleh masuk export/PDF/log;
 - device dan maintenance history tidak disediakan aksi delete operasional;
