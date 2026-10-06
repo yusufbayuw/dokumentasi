@@ -12,8 +12,15 @@ class DeviceHealthService
             return 'disabled';
         }
 
-        $hasManagementIp = (bool) $device->ip_address_id
-            || (bool) $device->managementInterface?->ip_address_id;
+        $interfaceIpId = null;
+
+        if ($device->relationLoaded('managementInterface')) {
+            $interfaceIpId = $device->managementInterface?->ip_address_id;
+        } elseif ($device->exists) {
+            $interfaceIpId = $device->managementInterface()->value('ip_address_id');
+        }
+
+        $hasManagementIp = (bool) $device->ip_address_id || (bool) $interfaceIpId;
 
         if (! $hasManagementIp || ! $device->last_checked_at) {
             return 'unknown';
