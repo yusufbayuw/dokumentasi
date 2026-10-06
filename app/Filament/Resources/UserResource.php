@@ -48,6 +48,10 @@ class UserResource extends Resource
                     ->maxLength(255)
                     ->dehydrateStateUsing(static fn (null|string $state): null|string => filled($state) ? Hash::make($state) : null,)
                     ->dehydrated(static fn (null|string $state): bool => filled($state)),
+                Forms\Components\Toggle::make('is_active')
+                    ->label('Akun Aktif')
+                    ->default(true)
+                    ->helperText('Akun nonaktif tidak dapat mengakses panel.'),
                 Forms\Components\Select::make('roles')
                     ->relationship('roles', 'name')
                     ->multiple()
@@ -71,6 +75,14 @@ class UserResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('username')
                     ->searchable()->hidden(!$userAuth->hasRole('super_admin')),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Aktif')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('last_login_at')
+                    ->label('Login Terakhir')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('-')
+                    ->toggleable(),
                 Tables\Columns\IconColumn::make('is_can_choose')
                     ->label('Dapat Memilih')
                     ->boolean(),
