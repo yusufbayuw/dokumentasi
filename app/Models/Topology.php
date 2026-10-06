@@ -82,12 +82,17 @@ class Topology extends Model
             return;
         }
 
-        DeviceConnection::query()
+        $connections = DeviceConnection::query()
             ->where('target_device_id', $this->device_id)
             ->where('source', 'topology')
-            ->delete();
+            ->orderBy('id')
+            ->get();
+
+        $connection = $connections->first();
 
         if (! $this->parent_id) {
+            $connections->each->delete();
+
             return;
         }
 
@@ -96,17 +101,28 @@ class Topology extends Model
             ->value('device_id');
 
         if (! $parentDeviceId || (int) $parentDeviceId === (int) $this->device_id) {
+            $connections->each->delete();
+
             return;
         }
 
-        DeviceConnection::query()->create([
+        if (! $connection) {
+            $connection = new DeviceConnection();
+            $connection->target_device_id = $this->device_id;
+            $connection->source = 'topology';
+        }
+
+        $connection->fill([
             'source_device_id' => $parentDeviceId,
-            'target_device_id' => $this->device_id,
-            'source' => 'topology',
             'connection_type' => 'ethernet',
             'is_primary' => true,
             'status' => 'active',
             'description' => $this->keterangan,
-        ]);
+        ])->save();
+
+        $connections
+            ->skip(1)
+            ->each
+            ->delete();
     }
 }

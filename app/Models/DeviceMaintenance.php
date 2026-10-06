@@ -10,6 +10,10 @@ class DeviceMaintenance extends Model
 {
     use HasFactory;
 
+    protected $attributes = [
+        'status' => 'planned',
+    ];
+
     protected $casts = [
         'performed_at' => 'datetime',
         'next_due_at' => 'datetime',

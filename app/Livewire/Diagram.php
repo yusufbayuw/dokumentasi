@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Filament\Resources\DeviceResource;
 use App\Models\Device;
 use App\Models\DeviceConnection;
+use App\Services\DeviceHealthService;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
@@ -17,6 +18,7 @@ class Diagram extends Component
                 'ip',
                 'type',
                 'ownerUnit',
+                'managementInterface.ipAddress',
                 'ruangan.unit',
                 'ruangan.lantai.gedung',
             ])
@@ -52,7 +54,7 @@ class Diagram extends Component
 
         $nodes = $devices
             ->map(function (Device $device) use ($degreeByDevice): array {
-                $ip = $device->ip;
+                $ip = $device->ip ?? $device->managementInterface?->ipAddress;
                 $room = $device->ruangan;
                 $floor = $room?->lantai;
                 $building = $floor?->gedung;
@@ -60,9 +62,7 @@ class Diagram extends Component
                 $ownerUnit = $device->ownerUnit;
                 $degree = $degreeByDevice->get($device->id, ['incoming' => 0, 'outgoing' => 0]);
 
-                $status = ! $ip
-                    ? 'unknown'
-                    : ($ip->status ? 'online' : 'offline');
+                $status = app(DeviceHealthService::class)->status($device);
 
                 $locationParts = array_filter([
                     $room?->nama,
@@ -80,11 +80,7 @@ class Diagram extends Component
                     'typeCode' => $this->typeCode($device->type?->nama),
                     'ip' => $ip?->nama,
                     'status' => $status,
-                    'statusLabel' => match ($status) {
-                        'online' => 'Online',
-                        'offline' => 'Offline',
-                        default => 'Tidak diketahui',
-                    },
+                    'statusLabel' => app(DeviceHealthService::class)->label($status),
                     'criticality' => $device->criticality ?? 'normal',
                     'criticalityLabel' => $this->criticalityLabel($device->criticality),
                     'lifecycle' => $device->lifecycle_status ?? 'active',

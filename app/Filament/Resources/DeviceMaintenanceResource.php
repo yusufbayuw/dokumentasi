@@ -6,6 +6,7 @@ use App\Filament\Resources\DeviceMaintenanceResource\Pages;
 use App\Models\DeviceMaintenance;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -45,6 +46,7 @@ class DeviceMaintenanceResource extends Resource
                     ->required(),
                 Forms\Components\Select::make('status')
                     ->label('Status')
+                    ->live()
                     ->options([
                         'planned' => 'Direncanakan',
                         'in_progress' => 'Berjalan',
@@ -64,7 +66,8 @@ class DeviceMaintenanceResource extends Resource
                     ->label('Jadwal Berikutnya')
                     ->native(false)
                     ->displayFormat('d/m/Y H:i')
-                    ->seconds(false),
+                    ->seconds(false)
+                    ->rule('after_or_equal:performed_at'),
                 Forms\Components\TextInput::make('performed_by')
                     ->label('Teknisi / Pelaksana')
                     ->maxLength(255),
@@ -82,6 +85,7 @@ class DeviceMaintenanceResource extends Resource
                     ->columnSpanFull(),
                 Forms\Components\Textarea::make('result')
                     ->label('Hasil / Tindakan')
+                    ->required(fn (Get $get): bool => $get('status') === 'completed')
                     ->rows(3)
                     ->columnSpanFull(),
             ])
@@ -174,8 +178,6 @@ class DeviceMaintenanceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make()
-                    ->requiresConfirmation(),
             ])
             ->bulkActions([])
             ->defaultSort('performed_at', 'desc');

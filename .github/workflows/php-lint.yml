@@ -1,4 +1,4 @@
-name: Code Lint
+name: Quality Guard
 
 on:
   push:
@@ -7,12 +7,13 @@ on:
   pull_request:
 
 concurrency:
-  group: code-lint-${{ github.ref }}
+  group: quality-guard-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  code-lint:
+  quality:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,13 +24,29 @@ jobs:
           php-version: '8.2'
           coverage: none
 
+      - name: Validate Composer metadata
+        run: composer validate --no-check-publish
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: Lint PHP files
         run: |
           find app bootstrap config database routes tests -type f -name '*.php' -print0 \
             | xargs -0 -n1 php -l
 
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Run test suite
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+          CACHE_DRIVER: array
+          QUEUE_CONNECTION: sync
+          SESSION_DRIVER: array
+        run: php artisan test
+
+      - name: Dependency security audit
+        continue-on-error: true
+        run: composer audit --locked
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

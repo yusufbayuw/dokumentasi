@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Device;
+use App\Models\DeviceInterface;
 use App\Models\IpAddress;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,6 +21,13 @@ class PingIpAddress implements ShouldQueue
             ->where('monitoring_enabled', true)
             ->whereNotNull('ip_address_id')
             ->pluck('ip_address_id')
+            ->merge(
+                DeviceInterface::query()
+                    ->where('is_management', true)
+                    ->whereNotNull('ip_address_id')
+                    ->whereHas('device', fn ($query) => $query->where('monitoring_enabled', true))
+                    ->pluck('ip_address_id')
+            )
             ->filter()
             ->unique();
 
@@ -31,7 +39,8 @@ class PingIpAddress implements ShouldQueue
             ->whereIn('id', $assignedIpIds)
             ->get(['id', 'nama'])
             ->each(function (IpAddress $ipAddress): void {
-                SinglePingIpAddress::dispatch($ipAddress->nama, $ipAddress->id);
+                SinglePingIpAddress::dispatch($ipAddress->nama, $ipAddress->id)
+                    ->onQueue('monitoring');
             });
     }
 }

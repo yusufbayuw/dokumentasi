@@ -78,12 +78,20 @@ class IpAddressResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
+            ->actions([])
             ->bulkActions([
                 ExportBulkAction::make(),
             ]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return false;
     }
 
     public static function getRelations(): array

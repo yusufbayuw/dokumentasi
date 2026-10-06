@@ -2,15 +2,25 @@
 
 namespace App\Observers;
 
-use App\Models\Device;
 use App\Models\IpAddress;
 use App\Models\Network;
+use App\Services\IpUsageService;
+use App\Support\Ipv4Cidr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class NetworkObserver
 {
+    private const MIN_PREFIX = 16;
+    private const MAX_PREFIX = 30;
     private const MAX_MANAGED_HOSTS = 65534;
+
+    public function saving(Network $network): void
+    {
+        $this->hydrateDerivedFields($network);
+        $this->assertNoOverlap($network);
+    }
 
     public function created(Network $network): void
     {
@@ -24,18 +34,15 @@ class NetworkObserver
         }
 
         [$startLong, $endLong] = $this->validatedRange($network);
+        $usedIpIds = app(IpUsageService::class)->usedIpIds();
 
-        $assignedIpIds = Device::query()
-            ->whereNotNull('ip_address_id')
-            ->pluck('ip_address_id');
-
-        if ($assignedIpIds->isEmpty()) {
+        if ($usedIpIds->isEmpty()) {
             return;
         }
 
         $assignedIps = IpAddress::query()
             ->where('network_id', $network->id)
-            ->whereIn('id', $assignedIpIds)
+            ->whereIn('id', $usedIpIds)
             ->get(['id', 'nama']);
 
         foreach ($assignedIps as $ipAddress) {
@@ -43,7 +50,7 @@ class NetworkObserver
 
             if ($ipLong === false || $ipLong < $startLong || $ipLong > $endLong) {
                 throw ValidationException::withMessages([
-                    'address' => 'Perubahan jaringan dibatalkan karena ada IP yang masih dipakai perangkat dan akan keluar dari rentang jaringan baru.',
+                    'address' => 'Perubahan jaringan dibatalkan karena ada IP yang masih dipakai dan akan keluar dari rentang jaringan baru.',
                 ]);
             }
         }
@@ -51,16 +58,9 @@ class NetworkObserver
 
     public function updated(Network $network): void
     {
-        if (! $network->wasChanged(['hostMin', 'hostMax'])) {
-            return;
+        if ($network->wasChanged(['hostMin', 'hostMax'])) {
+            $this->syncIpPool($network);
         }
-
-        $this->syncIpPool($network);
-    }
-
-    public function deleted(Network $network): void
-    {
-        // Foreign key pada ip_addresses akan menangani penghapusan sesuai konfigurasi schema.
     }
 
     public function restored(Network $network): void
@@ -68,9 +68,58 @@ class NetworkObserver
         $this->syncIpPool($network);
     }
 
-    public function forceDeleted(Network $network): void
+    private function hydrateDerivedFields(Network $network): void
     {
-        //
+        $prefix = (int) $network->netmask_original;
+
+        if ($prefix < self::MIN_PREFIX || $prefix > self::MAX_PREFIX) {
+            throw ValidationException::withMessages([
+                'netmask_original' => 'Prefix jaringan yang dikelola harus antara /16 dan /30.',
+            ]);
+        }
+
+        try {
+            $cidr = Ipv4Cidr::from((string) $network->address, $prefix);
+        } catch (InvalidArgumentException) {
+            throw ValidationException::withMessages([
+                'address' => 'Alamat IPv4 jaringan tidak valid.',
+            ]);
+        }
+
+        if ($cidr->hostCount > self::MAX_MANAGED_HOSTS) {
+            throw ValidationException::withMessages([
+                'netmask_original' => 'Rentang jaringan terlalu besar untuk dikelola. Maksimal 65.534 alamat host.',
+            ]);
+        }
+
+        $network->netmask = $cidr->netmask;
+        $network->network = $cidr->network;
+        $network->broadcast = $cidr->broadcast;
+        $network->hostMin = $cidr->hostMin;
+        $network->hostMax = $cidr->hostMax;
+        $network->hostPerNet = (string) $cidr->hostCount;
+    }
+
+    private function assertNoOverlap(Network $network): void
+    {
+        $candidate = Ipv4Cidr::from((string) $network->address, (int) $network->netmask_original);
+
+        Network::query()
+            ->when($network->exists, fn ($query) => $query->where('id', '!=', $network->getKey()))
+            ->get(['id', 'address', 'netmask_original'])
+            ->each(function (Network $existing) use ($candidate): void {
+                try {
+                    $other = Ipv4Cidr::from((string) $existing->address, (int) $existing->netmask_original);
+                } catch (InvalidArgumentException) {
+                    return;
+                }
+
+                if ($candidate->overlaps($other)) {
+                    throw ValidationException::withMessages([
+                        'address' => "Subnet overlap dengan network #{$existing->id} ({$other->network}/{$other->prefix}).",
+                    ]);
+                }
+            });
     }
 
     private function syncIpPool(Network $network): void
@@ -122,12 +171,7 @@ class NetworkObserver
                 return;
             }
 
-            $usedIds = Device::query()
-                ->whereIn('ip_address_id', $obsoleteIds)
-                ->pluck('ip_address_id')
-                ->filter()
-                ->unique();
-
+            $usedIds = app(IpUsageService::class)->usedIpIds();
             $deletableIds = $obsoleteIds->diff($usedIds);
 
             if ($deletableIds->isNotEmpty()) {
@@ -147,14 +191,9 @@ class NetworkObserver
             ]);
         }
 
-        $hostCount = ($endLong - $startLong) + 1;
-
-        if ($hostCount > self::MAX_MANAGED_HOSTS) {
-            throw ValidationException::withMessages([
-                'netmask_original' => 'Rentang jaringan terlalu besar untuk dikelola. Maksimal 65.534 alamat host.',
-            ]);
-        }
-
-        return [$startLong, $endLong];
+        return [
+            (int) sprintf('%u', $startLong),
+            (int) sprintf('%u', $endLong),
+        ];
     }
 }

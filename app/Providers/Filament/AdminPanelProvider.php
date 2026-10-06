@@ -74,7 +74,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->plugins([
-                BreezyCore::make(),
+                BreezyCore::make()->enableTwoFactorAuthentication(force: false),
                 FilamentShieldPlugin::make(),
                 FilamentBackgroundsPlugin::make()
                     /* ->imageProvider(

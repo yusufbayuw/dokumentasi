@@ -7,10 +7,12 @@ use App\Filament\Resources\DeviceResource\RelationManagers\InterfacesRelationMan
 use App\Filament\Resources\DeviceResource\RelationManagers\MaintenancesRelationManager;
 use App\Filament\Resources\DeviceResource\RelationManagers\MonitoringChecksRelationManager;
 use App\Filament\Resources\DeviceResource\RelationManagers\MovementsRelationManager;
+use App\Jobs\RestartFingerprintDevice;
 use App\Forms\Components\LeafletMap;
 use App\Models\Device;
 use App\Models\Ruangan;
-use App\Services\ActivityLogger;
+use App\Services\DeviceHealthService;
+use App\Services\IpUsageService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -18,10 +20,8 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Builder;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
-use Rats\Zkteco\Lib\ZKTeco;
-use Throwable;
 
 class DeviceResource extends Resource
 {
@@ -85,10 +85,11 @@ class DeviceResource extends Resource
                     ->columns(2)
                     ->schema([
                         Forms\Components\Select::make('ip_address_id')
-                            ->relationship('ip', 'nama')
-                            ->label('IP Address')
+                            ->label('Management IP (Legacy)')
+                            ->options(fn (?Device $record): array => app(IpUsageService::class)
+                                ->availableForDevice($record?->id))
                             ->searchable()
-                            ->preload(),
+                            ->helperText('Kompatibilitas sementara. Untuk perangkat multi-interface, tetapkan IP pada Interface Management.'),
                         Forms\Components\Select::make('ruangan_id')
                             ->relationship('ruangan', 'nama')
                             ->label('Nama Ruangan')
@@ -150,12 +151,18 @@ class DeviceResource extends Resource
                             ->displayFormat('d/m/Y'),
                     ]),
 
-                Forms\Components\Section::make('Monitoring')
-                    ->description('Jika aktif, perangkat akan ikut proses monitoring ICMP dan menyimpan riwayat status serta latency.')
+                Forms\Components\Section::make('Monitoring & Otomasi')
+                    ->description('Monitoring berjalan terjadwal. Reboot otomatis bersifat opt-in dan hanya dijalankan untuk perangkat fingerprint.')
+                    ->columns(2)
                     ->schema([
                         Forms\Components\Toggle::make('monitoring_enabled')
                             ->label('Aktifkan Monitoring')
                             ->default(true)
+                            ->inline(false),
+                        Forms\Components\Toggle::make('auto_reboot_enabled')
+                            ->label('Reboot Otomatis Pukul 03:00')
+                            ->helperText('Khusus fingerprint. Default nonaktif untuk keamanan operasional.')
+                            ->default(false)
                             ->inline(false),
                     ]),
             ]);
@@ -176,10 +183,11 @@ class DeviceResource extends Resource
                     ->label('Perangkat')
                     ->searchable()
                     ->description(fn (Device $record): ?string => $record->hostname),
-                Tables\Columns\TextColumn::make('ip.nama')
-                    ->label('IP')
-                    ->searchable()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('management_ip')
+                    ->label('Management IP')
+                    ->state(fn (Device $record): ?string => $record->ip?->nama
+                        ?? $record->managementInterface?->ipAddress?->nama)
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('type.nama')
                     ->label('Jenis')
                     ->badge()
@@ -213,10 +221,18 @@ class DeviceResource extends Resource
                     })
                     ->sortable()
                     ->toggleable(),
-                Tables\Columns\IconColumn::make('ip.status')
-                    ->label('Online')
-                    ->sortable()
-                    ->boolean(),
+                Tables\Columns\TextColumn::make('health_status')
+                    ->label('Health')
+                    ->state(fn (Device $record): string => app(DeviceHealthService::class)->status($record))
+                    ->formatStateUsing(fn (string $state): string => app(DeviceHealthService::class)->label($state))
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'online' => 'success',
+                        'offline' => 'danger',
+                        'stale' => 'warning',
+                        'disabled' => 'gray',
+                        default => 'info',
+                    }),
                 Tables\Columns\TextColumn::make('last_latency_ms')
                     ->label('Latency')
                     ->suffix(' ms')
@@ -269,83 +285,36 @@ class DeviceResource extends Resource
                     ->modalHeading('Reboot perangkat fingerprint?')
                     ->modalDescription('Perangkat akan restart dan dapat tidak tersedia sementara. Pastikan tidak sedang digunakan untuk proses absensi penting.')
                     ->visible(function (Device $device): bool {
-                        return ($device->type?->nama === 'Finger Print')
+                        return str_contains(strtolower((string) $device->type?->nama), 'finger')
                             && (auth()->user()?->can('update_device') ?? false);
                     })
                     ->action(function (Device $device): void {
-                        $ip = $device->ip?->nama;
+                        RestartFingerprintDevice::dispatch(
+                            $device->id,
+                            auth()->id(),
+                            'manual',
+                        )->onQueue('device-actions');
 
-                        if (! $ip || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
-                            Notification::make()
-                                ->title('Reboot dibatalkan')
-                                ->body('Perangkat tidak memiliki alamat IPv4 yang valid.')
-                                ->danger()
-                                ->send();
-
-                            return;
-                        }
-
-                        try {
-                            $zk = new ZKTeco($ip);
-                            $connected = $zk->connect();
-
-                            if ($connected === false) {
-                                Log::warning('Gagal terhubung ke perangkat fingerprint untuk reboot.', [
-                                    'device_id' => $device->id,
-                                    'ip_address' => $ip,
-                                    'user_id' => auth()->id(),
-                                ]);
-
-                                Notification::make()
-                                    ->title('Reboot gagal')
-                                    ->body('Tidak dapat terhubung ke perangkat fingerprint.')
-                                    ->danger()
-                                    ->send();
-
-                                return;
-                            }
-
-                            $zk->restart();
-
-                            Log::notice('Perangkat fingerprint direboot dari aplikasi.', [
-                                'device_id' => $device->id,
-                                'ip_address' => $ip,
-                                'user_id' => auth()->id(),
-                            ]);
-
-                            app(ActivityLogger::class)->log(
-                                'device.reboot',
-                                $device,
-                                [],
-                                ['ip_address' => $ip],
-                                'Perintah reboot dikirim dari aplikasi.',
-                            );
-
-                            Notification::make()
-                                ->title('Perintah reboot dikirim')
-                                ->body("Perintah reboot telah dikirim ke {$device->nama} ({$ip}).")
-                                ->success()
-                                ->send();
-                        } catch (Throwable $exception) {
-                            Log::error('Reboot perangkat fingerprint gagal.', [
-                                'device_id' => $device->id,
-                                'ip_address' => $ip,
-                                'user_id' => auth()->id(),
-                                'error' => $exception->getMessage(),
-                            ]);
-
-                            Notification::make()
-                                ->title('Reboot gagal')
-                                ->body('Terjadi kesalahan saat menghubungi perangkat. Detail dicatat pada log aplikasi.')
-                                ->danger()
-                                ->send();
-                        }
+                        Notification::make()
+                            ->title('Perintah reboot diantrikan')
+                            ->body("Reboot {$device->nama} akan diproses oleh queue worker.")
+                            ->success()
+                            ->send();
                     }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     ExportBulkAction::make(),
                 ]),
+            ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'ip',
+                'managementInterface.ipAddress',
             ]);
     }
 

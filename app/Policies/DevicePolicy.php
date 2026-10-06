@@ -65,7 +65,7 @@ class DevicePolicy
      */
     public function delete(User $user, Device $device): bool
     {
-        return $user->can('delete_device');
+        return false;
     }
 
     /**
@@ -76,7 +76,7 @@ class DevicePolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_device');
+        return false;
     }
 
     /**
@@ -88,7 +88,7 @@ class DevicePolicy
      */
     public function forceDelete(User $user, Device $device): bool
     {
-        return $user->can('force_delete_device');
+        return false;
     }
 
     /**
@@ -99,7 +99,7 @@ class DevicePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_device');
+        return false;
     }
 
     /**
