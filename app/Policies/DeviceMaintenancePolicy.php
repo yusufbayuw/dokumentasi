@@ -29,6 +29,6 @@ class DeviceMaintenancePolicy
 
     public function delete(User $user, DeviceMaintenance $maintenance): bool
     {
-        return $user->can('update_device');
+        return false;
     }
 }
