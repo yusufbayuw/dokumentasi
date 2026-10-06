@@ -4,6 +4,7 @@ namespace App\Filament\Resources\DeviceResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -31,13 +32,14 @@ class MaintenancesRelationManager extends RelationManager
                 ->required(),
             Forms\Components\Select::make('status')
                 ->label('Status')
+                ->live()
                 ->options([
                     'planned' => 'Direncanakan',
                     'in_progress' => 'Berjalan',
                     'completed' => 'Selesai',
                     'cancelled' => 'Dibatalkan',
                 ])
-                ->default('completed')
+                ->default('planned')
                 ->required(),
             Forms\Components\DateTimePicker::make('performed_at')
                 ->label('Waktu Maintenance')
@@ -50,7 +52,8 @@ class MaintenancesRelationManager extends RelationManager
                 ->label('Jadwal Berikutnya')
                 ->native(false)
                 ->displayFormat('d/m/Y H:i')
-                ->seconds(false),
+                ->seconds(false)
+                ->rule('after_or_equal:performed_at'),
             Forms\Components\TextInput::make('performed_by')
                 ->label('Teknisi / Pelaksana')
                 ->maxLength(255),
@@ -68,6 +71,7 @@ class MaintenancesRelationManager extends RelationManager
                 ->columnSpanFull(),
             Forms\Components\Textarea::make('result')
                 ->label('Hasil / Tindakan')
+                ->required(fn (Get $get): bool => $get('status') === 'completed')
                 ->rows(3)
                 ->columnSpanFull(),
         ])->columns(2);
@@ -137,7 +141,6 @@ class MaintenancesRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make()->requiresConfirmation(),
             ])
             ->bulkActions([])
             ->defaultSort('performed_at', 'desc');
