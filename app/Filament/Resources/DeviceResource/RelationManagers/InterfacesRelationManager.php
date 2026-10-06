@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\DeviceResource\RelationManagers;
 
+use App\Models\DeviceInterface;
+use App\Services\IpUsageService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -40,10 +42,13 @@ class InterfacesRelationManager extends RelationManager
                 ->maxLength(32)
                 ->regex('/^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/'),
             Forms\Components\Select::make('ip_address_id')
-                ->relationship('ipAddress', 'nama')
                 ->label('IP Interface')
-                ->searchable()
-                ->preload(),
+                ->options(fn (?DeviceInterface $record): array => app(IpUsageService::class)
+                    ->availableForInterface(
+                        (int) $this->getOwnerRecord()->getKey(),
+                        $record?->id,
+                    ))
+                ->searchable(),
             Forms\Components\TextInput::make('speed_mbps')
                 ->label('Speed (Mbps)')
                 ->numeric()
