@@ -104,9 +104,6 @@ class UserResource extends Resource
             ])
             ->bulkActions([
                 ExportBulkAction::make()->hidden(!$userAuth->hasRole(['super_admin'])),
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 
