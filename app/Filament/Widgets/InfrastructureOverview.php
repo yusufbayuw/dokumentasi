@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Models\Device;
 use App\Models\DeviceMaintenance;
 use App\Models\Network;
+use App\Services\DeviceHealthService;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -19,24 +20,38 @@ class InfrastructureOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        $total = Device::query()->count();
-        $monitored = Device::query()->where('monitoring_enabled', true)->count();
-        $online = Device::query()
-            ->whereHas('ip', fn ($query) => $query->where('status', true))
+        $devices = Device::query()
+            ->with(['interfaces:id,device_id,ip_address_id,is_management'])
+            ->get([
+                'id',
+                'ip_address_id',
+                'monitoring_enabled',
+                'monitoring_status',
+                'last_checked_at',
+                'criticality',
+            ]);
+
+        $health = app(DeviceHealthService::class);
+
+        $total = $devices->count();
+        $monitored = $devices->where('monitoring_enabled', true)->count();
+        $online = $devices->filter(fn (Device $device): bool => $health->status($device) === 'online')->count();
+        $offline = $devices->filter(fn (Device $device): bool => $health->status($device) === 'offline')->count();
+        $stale = $devices->filter(fn (Device $device): bool => $health->status($device) === 'stale')->count();
+        $unknown = $devices->filter(fn (Device $device): bool => $health->status($device) === 'unknown')->count();
+        $withoutIp = $devices->filter(fn (Device $device): bool => ! $device->ip_address_id
+            && ! $device->interfaces->contains(fn ($interface): bool => $interface->is_management && $interface->ip_address_id))
             ->count();
-        $offline = Device::query()
-            ->whereHas('ip', fn ($query) => $query->where('status', false))
-            ->count();
-        $withoutIp = Device::query()->whereNull('ip_address_id')->count();
-        $criticalOffline = Device::query()
-            ->where('monitoring_enabled', true)
+        $criticalOffline = $devices
             ->where('criticality', 'critical')
-            ->whereHas('ip', fn ($query) => $query->where('status', false))
+            ->filter(fn (Device $device): bool => $health->status($device) === 'offline')
             ->count();
+
         $warrantyExpiring = Device::query()
             ->whereNotNull('warranty_until')
             ->whereBetween('warranty_until', [today(), today()->addDays(90)])
             ->count();
+
         $maintenanceOverdue = DeviceMaintenance::query()
             ->whereNotNull('next_due_at')
             ->where('next_due_at', '<', now())
@@ -48,11 +63,11 @@ class InfrastructureOverview extends BaseWidget
                 ->description(number_format($monitored) . ' monitoring aktif')
                 ->icon('heroicon-o-computer-desktop'),
             Stat::make('Online', number_format($online))
-                ->description('Perangkat dengan IP terpantau online')
+                ->description("{$stale} stale · {$unknown} unknown")
                 ->color('success')
                 ->icon('heroicon-o-signal'),
             Stat::make('Offline', number_format($offline))
-                ->description(number_format($withoutIp) . ' perangkat tanpa IP')
+                ->description(number_format($withoutIp) . ' perangkat tanpa management IP')
                 ->color($offline > 0 ? 'danger' : 'success')
                 ->icon('heroicon-o-exclamation-triangle'),
             Stat::make('Critical Offline', number_format($criticalOffline))
