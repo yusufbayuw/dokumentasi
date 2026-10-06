@@ -12,11 +12,10 @@ class DeviceHealthService
             return 'disabled';
         }
 
-        if (! $device->ip_address_id) {
-            return 'unknown';
-        }
+        $hasManagementIp = (bool) $device->ip_address_id
+            || (bool) $device->managementInterface?->ip_address_id;
 
-        if (! $device->last_checked_at) {
+        if (! $hasManagementIp || ! $device->last_checked_at) {
             return 'unknown';
         }
 
