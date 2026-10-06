@@ -64,9 +64,7 @@ class SinglePingIpAddress implements ShouldQueue
             $output = trim($process->getOutput() . "\n" . $process->getErrorOutput());
             $latency = $successful ? $this->extractLatency($output) : null;
 
-            $ipAddress->update([
-                'status' => $successful,
-            ]);
+            $ipAddress->update(['status' => $successful]);
 
             $this->recordDeviceChecks(
                 $ipAddress,
@@ -93,12 +91,20 @@ class SinglePingIpAddress implements ShouldQueue
         ?string $message,
     ): void {
         $checkedAt = now();
+        $failureThreshold = max(1, (int) config('cmdb.monitoring.offline_after_failures', 3));
 
         Device::query()
             ->where('monitoring_enabled', true)
             ->where('ip_address_id', $ipAddress->id)
             ->get()
-            ->each(function (Device $device) use ($ipAddress, $successful, $latency, $message, $checkedAt): void {
+            ->each(function (Device $device) use (
+                $ipAddress,
+                $successful,
+                $latency,
+                $message,
+                $checkedAt,
+                $failureThreshold,
+            ): void {
                 DeviceMonitoringCheck::create([
                     'device_id' => $device->id,
                     'device_name' => $device->nama,
@@ -110,16 +116,22 @@ class SinglePingIpAddress implements ShouldQueue
                     'checked_at' => $checkedAt,
                 ]);
 
-                $updates = [
-                    'last_checked_at' => $checkedAt,
-                ];
+                $updates = ['last_checked_at' => $checkedAt];
 
                 if ($successful) {
                     $updates['last_seen_at'] = $checkedAt;
+                    $updates['monitoring_status'] = 'online';
+                    $updates['consecutive_failures'] = 0;
 
                     if ($latency !== null) {
                         $updates['last_latency_ms'] = $latency;
                     }
+                } else {
+                    $failures = ((int) $device->consecutive_failures) + 1;
+                    $updates['consecutive_failures'] = $failures;
+                    $updates['monitoring_status'] = $failures >= $failureThreshold
+                        ? 'offline'
+                        : 'unknown';
                 }
 
                 $device->forceFill($updates)->saveQuietly();
@@ -139,10 +151,6 @@ class SinglePingIpAddress implements ShouldQueue
     {
         $message = trim(preg_replace('/\s+/', ' ', $output) ?? '');
 
-        if ($message === '') {
-            return null;
-        }
-
-        return mb_substr($message, 0, 1000);
+        return $message === '' ? null : mb_substr($message, 0, 1000);
     }
 }
