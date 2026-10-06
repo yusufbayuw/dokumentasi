@@ -20,6 +20,9 @@ class Device extends Model
         'last_checked_at' => 'datetime',
         'last_seen_at' => 'datetime',
         'last_latency_ms' => 'decimal:2',
+        'consecutive_failures' => 'integer',
+        'auto_reboot_enabled' => 'boolean',
+        'last_auto_reboot_at' => 'datetime',
     ];
 
     public function ruangan(): BelongsTo
@@ -52,9 +55,19 @@ class Device extends Model
         return $this->hasMany(DeviceMonitoringCheck::class, 'device_id', 'id');
     }
 
+    public function latestMonitoringCheck(): HasOne
+    {
+        return $this->hasOne(DeviceMonitoringCheck::class, 'device_id', 'id')->latestOfMany('checked_at');
+    }
+
     public function interfaces(): HasMany
     {
         return $this->hasMany(DeviceInterface::class, 'device_id', 'id');
+    }
+
+    public function credentials(): HasMany
+    {
+        return $this->hasMany(DeviceCredential::class, 'device_id', 'id');
     }
 
     public function maintenances(): HasMany
