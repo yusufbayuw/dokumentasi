@@ -20,6 +20,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction;
 
 class DeviceResource extends Resource
@@ -182,10 +183,11 @@ class DeviceResource extends Resource
                     ->label('Perangkat')
                     ->searchable()
                     ->description(fn (Device $record): ?string => $record->hostname),
-                Tables\Columns\TextColumn::make('ip.nama')
-                    ->label('IP')
-                    ->searchable()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('management_ip')
+                    ->label('Management IP')
+                    ->state(fn (Device $record): ?string => $record->ip?->nama
+                        ?? $record->managementInterface?->ipAddress?->nama)
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('type.nama')
                     ->label('Jenis')
                     ->badge()
@@ -304,6 +306,15 @@ class DeviceResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     ExportBulkAction::make(),
                 ]),
+            ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'ip',
+                'managementInterface.ipAddress',
             ]);
     }
 
