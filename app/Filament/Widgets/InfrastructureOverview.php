@@ -21,7 +21,7 @@ class InfrastructureOverview extends BaseWidget
     protected function getStats(): array
     {
         $devices = Device::query()
-            ->with(['interfaces:id,device_id,ip_address_id,is_management'])
+            ->with(['managementInterface:id,device_id,ip_address_id,is_management'])
             ->get([
                 'id',
                 'ip_address_id',
@@ -40,7 +40,7 @@ class InfrastructureOverview extends BaseWidget
         $stale = $devices->filter(fn (Device $device): bool => $health->status($device) === 'stale')->count();
         $unknown = $devices->filter(fn (Device $device): bool => $health->status($device) === 'unknown')->count();
         $withoutIp = $devices->filter(fn (Device $device): bool => ! $device->ip_address_id
-            && ! $device->interfaces->contains(fn ($interface): bool => $interface->is_management && $interface->ip_address_id))
+            && ! $device->managementInterface?->ip_address_id)
             ->count();
         $criticalOffline = $devices
             ->where('criticality', 'critical')
