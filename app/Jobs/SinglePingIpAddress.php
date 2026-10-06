@@ -95,7 +95,14 @@ class SinglePingIpAddress implements ShouldQueue
 
         Device::query()
             ->where('monitoring_enabled', true)
-            ->where('ip_address_id', $ipAddress->id)
+            ->where(function ($query) use ($ipAddress): void {
+                $query->where('ip_address_id', $ipAddress->id)
+                    ->orWhereHas('interfaces', function ($interfaceQuery) use ($ipAddress): void {
+                        $interfaceQuery
+                            ->where('is_management', true)
+                            ->where('ip_address_id', $ipAddress->id);
+                    });
+            })
             ->get()
             ->each(function (Device $device) use (
                 $ipAddress,
