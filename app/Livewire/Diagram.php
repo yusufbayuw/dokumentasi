@@ -18,6 +18,7 @@ class Diagram extends Component
                 'ip',
                 'type',
                 'ownerUnit',
+                'managementInterface.ipAddress',
                 'ruangan.unit',
                 'ruangan.lantai.gedung',
             ])
@@ -53,7 +54,7 @@ class Diagram extends Component
 
         $nodes = $devices
             ->map(function (Device $device) use ($degreeByDevice): array {
-                $ip = $device->ip;
+                $ip = $device->ip ?? $device->managementInterface?->ipAddress;
                 $room = $device->ruangan;
                 $floor = $room?->lantai;
                 $building = $floor?->gedung;
