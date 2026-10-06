@@ -25,6 +25,9 @@ return new class extends Migration
             $table->boolean('is_active')->default(true)->index();
             $table->timestamp('last_login_at')->nullable()->index();
             $table->timestamp('password_changed_at')->nullable();
+            $table->text('two_factor_secret')->nullable();
+            $table->text('two_factor_recovery_codes')->nullable();
+            $table->timestamp('two_factor_confirmed_at')->nullable();
         });
 
         Schema::table('devices', function (Blueprint $table): void {
@@ -55,6 +58,9 @@ return new class extends Migration
                 'is_active',
                 'last_login_at',
                 'password_changed_at',
+                'two_factor_secret',
+                'two_factor_recovery_codes',
+                'two_factor_confirmed_at',
             ]);
         });
 
