@@ -1,54 +1,53 @@
 # Dokumentasi ICT YTB
 
-Sistem internal untuk dokumentasi dan pemantauan infrastruktur ICT Yayasan Taruna Bakti. Aplikasi dibangun dengan Laravel 10 dan Filament 3.
+Sistem internal **ICT CMDB + IPAM + Network Topology + Infrastructure Monitoring + Asset Lifecycle + Maintenance Operations** berbasis Laravel 10 dan Filament 3.
 
-## Ruang Lingkup
-
-Data utama yang dikelola:
-
-- Perangkat ICT (`devices`)
-- Tipe perangkat (`type_devices`)
-- Jaringan (`networks`)
-- Pool IP (`ip_addresses`)
-- Gedung (`gedungs`)
-- Lantai (`lantais`)
-- Ruangan (`ruangans`)
-- Unit (`units`)
-- Topologi perangkat (`topologies`)
-- Pengguna, role, dan permission melalui Filament Shield
-
-Relasi utama:
+## Model Data Utama
 
 ```text
-Gedung -> Lantai -> Ruangan -> Device -> IP Address -> Network
-                              |
-                              -> Topology
+Unit / Gedung / Lantai / Ruangan
+                │
+                ▼
+              Device
+        ┌───────┼────────┐
+        ▼       ▼        ▼
+ Interface   Lifecycle   Maintenance
+    │                     │
+    ▼                     ▼
+IP Address            History/Audit
+    │
+    ▼
+ Network
+
+DeviceInterface ───── DeviceConnection ───── DeviceInterface
 ```
 
-`devices.ip_address_id` adalah sumber kebenaran utama untuk menentukan apakah sebuah IP sedang digunakan perangkat. Kolom `ip_addresses.booked` tetap disinkronkan untuk kompatibilitas UI.
+`device_interfaces` + `device_connections` adalah arah canonical model jaringan. `devices.ip_address_id` dan `topologies` tetap dipertahankan sementara sebagai compatibility layer untuk data existing.
 
 ## Fitur Operasional
 
-- Inventarisasi perangkat dan lokasi fisik
-- Pengelolaan subnet dan pool IP
-- Status online perangkat melalui ping
-- Topologi perangkat
-- Denah lantai dan posisi perangkat
-- Export data
-- PDF laporan dokumentasi ICT
-- Reboot perangkat fingerprint dari aplikasi
-- Reboot fingerprint terjadwal pukul 03:00
+- CMDB perangkat, owner, lifecycle, criticality, serial, vendor, garansi, dan lokasi fisik
+- IPAM berbasis subnet dengan pool IP otomatis
+- Interface jaringan terstruktur dan koneksi port-aware
+- Diagram jaringan
+- Monitoring ICMP terjadwal dengan status `unknown`, `online`, `offline`, `stale`, dan `disabled`
+- Riwayat maintenance dan perpindahan perangkat
+- Kualitas data CMDB + audit CLI
+- Activity log perubahan data dan aksi perangkat
+- Export dan PDF laporan
+- Reboot fingerprint manual/terjadwal melalui queue
 - Role dan permission melalui Filament Shield
 
-## Persyaratan
+## Persyaratan Production
 
-- PHP 8.1 atau lebih baru
+- PHP 8.1+
 - MySQL / MariaDB
 - Composer
-- Node.js dan NPM untuk build asset
-- Perintah `ping` tersedia pada server
-- Scheduler Laravel aktif
-- Queue worker aktif apabila `QUEUE_CONNECTION` menggunakan driver asynchronous
+- Node.js + NPM
+- Perintah `ping`
+- Laravel scheduler aktif
+- Queue worker aktif
+- `APP_KEY` stabil dan dibackup karena credential store menggunakan enkripsi aplikasi
 
 ## Instalasi
 
@@ -62,112 +61,87 @@ php artisan migrate
 php artisan storage:link
 ```
 
-Konfigurasikan `.env`, terutama database, APP_URL, cache, session, queue, dan mail sesuai environment.
+## Deployment Setelah Hardening CMDB
 
-## Operasional Production
+Sebelum migrate: backup database, verifikasi restore, simpan `APP_KEY` production dengan aman, dan gunakan maintenance window bila perubahan menyentuh network/IP.
 
-### Scheduler
+```bash
+php artisan migrate --force
+php artisan dokumentasi:audit --details
+php artisan dokumentasi:migrate-device-credentials --dry-run
+php artisan dokumentasi:migrate-device-credentials
+php artisan optimize
+php artisan queue:restart
+```
 
-Laravel scheduler wajib dijalankan setiap menit:
+Command credential migration memindahkan `devices.username/password` legacy ke `device_credentials` terenkripsi, lalu mengosongkan plaintext. Jangan menjalankannya jika `APP_KEY` belum final/stabil.
+
+## Scheduler dan Queue
+
+Scheduler server wajib berjalan setiap menit:
 
 ```cron
 * * * * * cd /path/to/dokumentasi && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Scheduler saat ini menjalankan reboot perangkat bertipe `Finger Print` setiap pukul 03:00. Proses sudah memakai `withoutOverlapping()` dan kegagalan satu perangkat tidak menghentikan perangkat lainnya.
+Scheduler aplikasi dispatch monitoring tiap 5 menit dan hanya me-reboot fingerprint dengan `auto_reboot_enabled = true` pada pukul 03:00. Tidak ada lagi reboot otomatis global.
 
-### Queue
-
-Jika menggunakan Redis/database queue:
+Default `.env.example` menggunakan database queue. Contoh worker:
 
 ```bash
-php artisan queue:work --tries=3 --timeout=60
+php artisan queue:work --queue=device-actions,monitoring,default --sleep=2 --tries=3 --timeout=60
 ```
 
-Gunakan process manager seperti Supervisor atau systemd agar worker otomatis hidup kembali.
+## Monitoring
 
-Setelah deployment kode baru:
+```dotenv
+CMDB_MONITORING_STALE_MINUTES=15
+CMDB_OFFLINE_AFTER_FAILURES=3
+CMDB_MONITORING_SCHEDULE_MINUTES=5
+```
+
+Health: `unknown` = belum cukup data; `online` = check terbaru sukses; `offline` = gagal berturut-turut sampai threshold; `stale` = check melewati batas waktu; `disabled` = monitoring dimatikan.
+
+Management IP dapat berasal dari `devices.ip_address_id` (legacy) atau `DeviceInterface` yang ditandai sebagai Interface Management.
+
+## IPAM dan Network
+
+Subnet adalah sumber pembentuk pool IP. Resource IP tidak menerima create/edit alamat bebas. Network menghitung derived fields di domain layer, menolak subnet overlap, menolak resize yang mengeluarkan IP aktif, serta menjaga assignment pada Device dan DeviceInterface.
+
+## Topology
+
+`DeviceConnection` adalah model graph canonical yang dituju. `Topology` tree lama tetap dipertahankan sementara sebagai compatibility layer dan disinkronkan selama masa transisi.
+
+## Kualitas Data
+
+Dashboard **Kualitas Data** dan command audit memakai rule engine yang sama:
 
 ```bash
-php artisan queue:restart
+php artisan dokumentasi:audit
+php artisan dokumentasi:audit --details
+php artisan dokumentasi:audit --json
 ```
 
-### Cache Production
+Pemeriksaan meliputi konflik IP lintas device/interface, booked mismatch, IP di luar subnet, subnet overlap, connection/interface mismatch, self-loop, credential plaintext legacy, monitoring stale/belum berjalan/tanpa management IP, critical device tanpa monitoring, lifecycle/monitoring mismatch, kelengkapan owner/lokasi/asset/serial/interface, MAC invalid, dan maintenance overdue.
 
-```bash
-php artisan optimize
-```
+## Keamanan dan Lifecycle
 
-Setelah perubahan konfigurasi atau deployment besar, bila diperlukan:
-
-```bash
-php artisan optimize:clear
-php artisan optimize
-```
+- akun dapat dinonaktifkan melalui `users.is_active`; user nonaktif ditolak panel;
+- login terakhir dan waktu perubahan password dicatat;
+- credential perangkat baru disimpan terenkripsi dan tidak boleh masuk export/PDF/log;
+- device dan maintenance history tidak disediakan aksi delete operasional;
+- destructive cascade pada TypeDevice, Network, Gedung, dan Lantai dibatasi;
+- reboot perangkat diproses melalui queue dan tetap membutuhkan permission update device;
+- route laporan membutuhkan `view_any_device`.
 
 ## Backup
 
-Sebelum perubahan schema, upgrade framework, atau perubahan besar pada jaringan:
+Backup operasional harus mencakup database, `storage/public`, `APP_KEY`, dan konfigurasi deployment/Supervisor. Lakukan restore drill berkala; backup yang tidak pernah diuji restore belum dapat dianggap backup operasional.
 
-1. Backup database.
-2. Pastikan backup dapat direstore.
-3. Backup file upload pada storage/public yang digunakan aplikasi.
-4. Lakukan perubahan pada periode maintenance apabila menyentuh konfigurasi Network/IP.
+## Quality Guard / CI
 
-Database adalah sumber utama dokumentasi infrastruktur, sehingga backup harus diperlakukan sebagai bagian dari operasi rutin aplikasi.
+GitHub Actions menjalankan PHP syntax lint, Composer validation/install, test suite, dan frontend build. Regression test harus terus diperluas sebelum framework upgrade besar.
 
-## Aturan Keamanan Data
+## Upgrade Framework
 
-- Jangan menyimpan secret baru secara plaintext.
-- Kredensial perangkat tidak boleh masuk export, PDF, atau log.
-- Aksi reboot harus hanya diberikan kepada pengguna yang memiliki permission update perangkat.
-- Route laporan membutuhkan permission `view_any_device`.
-- Ping hanya menerima IPv4 valid dan dijalankan tanpa shell command concatenation.
-- Tipe perangkat yang masih digunakan tidak dapat dihapus dari UI.
-- Network yang masih memiliki IP yang dipakai Device tidak dapat dihapus dari UI.
-
-## Pengelolaan Network dan IP
-
-Network dikelola melalui menu Jaringan. CIDR yang diterima UI dibatasi `/16` sampai `/30` agar aplikasi tidak membuat pool IP yang terlalu besar.
-
-Saat Network berubah, sistem:
-
-1. Menghitung rentang host baru.
-2. Menolak perubahan jika ada IP aktif yang akan keluar dari rentang baru.
-3. Mempertahankan record IP yang masih valid.
-4. Menambahkan IP baru yang dibutuhkan.
-5. Menghapus IP lama hanya jika tidak direferensikan Device.
-
-Jangan melakukan manipulasi massal langsung pada tabel `ip_addresses` tanpa backup dan pengecekan relasi Device.
-
-## Monitoring IP
-
-Aksi **Ping Semua IP** mengambil target dari `devices.ip_address_id`, bukan hanya dari flag `booked`.
-
-Setiap ping dijalankan sebagai process dengan argumen terpisah dan timeout terbatas. Input yang bukan IPv4 valid akan ditolak dan dicatat ke log.
-
-## Laporan
-
-Laporan tersedia pada route `/laporan` untuk pengguna yang memiliki permission `view_any_device`.
-
-Data laporan dimuat melalui eager loading agar tidak menghasilkan query berulang. Perangkat yang belum mempunyai IP, ruangan, lantai, gedung, atau unit tetap dapat muncul tanpa menggagalkan proses PDF.
-
-## Quality Guard
-
-GitHub Actions menjalankan PHP syntax lint setiap push ke `main` melalui:
-
-```text
-.github/workflows/php-lint.yml
-```
-
-Regression test aplikasi masih perlu dikembangkan lebih lanjut, terutama untuk:
-
-- perubahan range Network
-- assignment dan perpindahan IP Device
-- proteksi delete master data
-- permission aksi operasional
-- generate laporan dengan relasi yang tidak lengkap
-
-## Catatan Upgrade
-
-Aplikasi masih menggunakan Laravel 10 dan Filament 3. Upgrade framework sebaiknya dilakukan setelah backup, regression test inti, dan dependency compatibility audit selesai. Hindari big-bang upgrade langsung pada production.
+Laravel 10 + Filament 3 dipertahankan pada hardening ini agar perubahan domain tidak bercampur dengan breaking framework upgrade. Setelah regression suite stabil, lakukan dependency compatibility audit dan upgrade dalam PR terpisah.
