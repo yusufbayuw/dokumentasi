@@ -29,7 +29,9 @@ class RestartFingerprintDevice implements ShouldQueue
 
     public function handle(): void
     {
-        $device = Device::query()->with(['ip', 'type'])->find($this->deviceId);
+        $device = Device::query()
+            ->with(['ip', 'type', 'managementInterface.ipAddress'])
+            ->find($this->deviceId);
 
         if (! $device) {
             return;
@@ -46,10 +48,11 @@ class RestartFingerprintDevice implements ShouldQueue
             return;
         }
 
-        $ip = $device->ip?->nama;
+        $ip = $device->ip?->nama
+            ?? $device->managementInterface?->ipAddress?->nama;
 
         if (! $ip || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
-            Log::warning('Reboot fingerprint dibatalkan karena IPv4 tidak valid.', [
+            Log::warning('Reboot fingerprint dibatalkan karena management IPv4 tidak valid.', [
                 'device_id' => $device->id,
                 'ip_address' => $ip,
                 'source' => $this->source,
@@ -97,6 +100,24 @@ class RestartFingerprintDevice implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $device = Device::query()->find($this->deviceId);
+
+        if (! $device) {
+            return;
+        }
+
+        app(ActivityLogger::class)->log(
+            'device.reboot_failed',
+            $device,
+            [],
+            ['source' => $this->source],
+            'Reboot fingerprint gagal setelah seluruh retry: ' . $exception->getMessage(),
+            $this->requestedBy,
+        );
     }
 
     public function backoff(): array
