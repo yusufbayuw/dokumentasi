@@ -98,9 +98,10 @@ php artisan queue:work --queue=device-actions,monitoring,default --sleep=2 --tri
 CMDB_MONITORING_STALE_MINUTES=15
 CMDB_OFFLINE_AFTER_FAILURES=3
 CMDB_MONITORING_SCHEDULE_MINUTES=5
+CMDB_MONITORING_HISTORY_RETENTION_DAYS=90
 ```
 
-Health: `unknown` = belum cukup data; `online` = check terbaru sukses; `offline` = gagal berturut-turut sampai threshold; `stale` = check melewati batas waktu; `disabled` = monitoring dimatikan.
+Health: `unknown` = belum cukup data; `online` = check terbaru sukses; `offline` = gagal berturut-turut sampai threshold; `stale` = check melewati batas waktu; `disabled` = monitoring dimatikan. Riwayat monitoring lama dipangkas otomatis sesuai retention (default 90 hari).
 
 Management IP dapat berasal dari `devices.ip_address_id` (legacy) atau `DeviceInterface` yang ditandai sebagai Interface Management.
 
