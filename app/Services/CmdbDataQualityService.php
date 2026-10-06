@@ -63,6 +63,7 @@ class CmdbDataQualityService
 
         $networkOverlaps = $this->networkOverlaps();
         $outsideSubnet = $this->ipsOutsideSubnet();
+        $duplicateConnections = $this->duplicateConnections();
 
         $staleMinutes = max(1, (int) config('cmdb.monitoring.stale_minutes', 15));
         $staleDevices = Device::query()
@@ -98,6 +99,7 @@ class CmdbDataQualityService
             $this->issue('network_overlap', 'Subnet saling overlap', $networkOverlaps->count(), 'danger', 'Subnet overlap membuat IPAM ambigu dan harus diselesaikan.', $networkOverlaps->take(10)->all()),
             $this->issue('connection_interface_mismatch', 'Interface koneksi tidak sesuai perangkat', $interfaceMismatch->count(), 'danger', 'Source/target interface harus dimiliki oleh source/target device yang sama.', $interfaceMismatch->take(10)->map(fn ($c) => "Connection #{$c->id} {$c->source_device_id} → {$c->target_device_id}")->all()),
             $this->issue('self_connection', 'Koneksi perangkat ke dirinya sendiri', DeviceConnection::query()->whereColumn('source_device_id', 'target_device_id')->count(), 'danger', 'Self-loop biasanya merupakan kesalahan input untuk koneksi infrastruktur.', DeviceConnection::query()->whereColumn('source_device_id', 'target_device_id')->limit(10)->pluck('id')->map(fn ($id) => "Connection #{$id}")->all()),
+            $this->issue('duplicate_connection', 'Koneksi jaringan terduplikasi', $duplicateConnections->count(), 'warning', 'Edge yang identik membuat diagram dan analisis topology menjadi ambigu.', $duplicateConnections->take(10)->all()),
             $this->issue('legacy_plaintext_credentials', 'Kredensial legacy masih plaintext', $legacyCredentials->count(), 'danger', 'Jalankan dokumentasi:migrate-device-credentials setelah backup dan verifikasi APP_KEY.', $legacyCredentials->take(10)->map(fn ($d) => "#{$d->id} {$d->nama}")->all()),
             $this->issue('monitoring_without_ip', 'Monitoring aktif tanpa management IP', $monitoringWithoutIp->count(), 'warning', 'Monitoring ICMP membutuhkan legacy IP atau Interface Management dengan IP.', $monitoringWithoutIp->take(10)->map(fn ($d) => "#{$d->id} {$d->nama}")->all()),
             $this->issue('monitoring_stale', 'Monitoring stale', $staleDevices->count(), 'warning', "Perangkat tidak diperiksa lebih dari {$staleMinutes} menit.", $staleDevices->take(10)->map(fn ($d) => "#{$d->id} {$d->nama} terakhir {$d->last_checked_at}")->all()),
@@ -174,6 +176,31 @@ class CmdbDataQualityService
                 ];
             })
             ->filter()
+            ->values();
+    }
+
+    private function duplicateConnections(): Collection
+    {
+        return DeviceConnection::query()
+            ->get([
+                'id',
+                'source_device_id',
+                'source_interface_id',
+                'target_device_id',
+                'target_interface_id',
+                'source_port',
+                'target_port',
+            ])
+            ->groupBy(fn (DeviceConnection $connection): string => implode(':', [
+                $connection->source_device_id,
+                $connection->source_interface_id ?: '-',
+                $connection->target_device_id,
+                $connection->target_interface_id ?: '-',
+                $connection->source_port ?: '-',
+                $connection->target_port ?: '-',
+            ]))
+            ->filter(fn (Collection $group): bool => $group->count() > 1)
+            ->map(fn (Collection $group): string => 'Connection #' . $group->pluck('id')->implode(', #'))
             ->values();
     }
 
