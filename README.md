@@ -66,6 +66,9 @@ php artisan storage:link
 Sebelum migrate: backup database, verifikasi restore, simpan `APP_KEY` production dengan aman, dan gunakan maintenance window bila perubahan menyentuh network/IP.
 
 ```bash
+composer dump-autoload -o
+php artisan filament:clear-cached-components
+php artisan optimize:clear
 php artisan migrate --force
 php artisan dokumentasi:audit --details
 php artisan dokumentasi:migrate-device-credentials --dry-run
@@ -73,6 +76,8 @@ php artisan dokumentasi:migrate-device-credentials
 php artisan optimize
 php artisan queue:restart
 ```
+
+> Setiap deployment yang menambah atau mengubah Filament Resource, Page, Widget, atau Relation Manager wajib membersihkan cache komponen Filament sebelum cache aplikasi dibangun ulang. Jika tidak, Livewire dapat melempar `ComponentNotFoundException` meskipun file PHP sudah ada di server.
 
 Command credential migration memindahkan `devices.username/password` legacy ke `device_credentials` terenkripsi, lalu mengosongkan plaintext. Jangan menjalankannya jika `APP_KEY` belum final/stabil.
 
