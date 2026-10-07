@@ -53,6 +53,11 @@ class LantaiResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('keterangan')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('ruangan_count')
+                    ->counts('ruangan')
+                    ->label('Ruangan')
+                    ->badge()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -80,7 +85,7 @@ class LantaiResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\RuangansRelationManager::class,
         ];
     }
 

@@ -46,6 +46,11 @@ class GedungResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('keterangan')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('lantai_count')
+                    ->counts('lantai')
+                    ->label('Lantai')
+                    ->badge()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -71,7 +76,7 @@ class GedungResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\LantaisRelationManager::class,
         ];
     }
 

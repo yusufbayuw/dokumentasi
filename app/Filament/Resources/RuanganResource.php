@@ -59,6 +59,11 @@ class RuanganResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('keterangan')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('device_count')
+                    ->counts('device')
+                    ->label('Perangkat')
+                    ->badge()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -85,7 +90,7 @@ class RuanganResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\DevicesRelationManager::class,
         ];
     }
 

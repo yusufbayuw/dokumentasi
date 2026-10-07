@@ -48,6 +48,11 @@ class UnitResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('keterangan')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('ruangan_count')
+                    ->counts('ruangan')
+                    ->label('Ruangan')
+                    ->badge()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -73,7 +78,7 @@ class UnitResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\RuangansRelationManager::class,
         ];
     }
 

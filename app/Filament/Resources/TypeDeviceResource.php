@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TypeDeviceResource\Pages;
+use App\Filament\Resources\TypeDeviceResource\RelationManagers;
 use App\Models\TypeDevice;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -67,7 +68,9 @@ class TypeDeviceResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            RelationManagers\DevicesRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
