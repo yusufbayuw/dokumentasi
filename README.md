@@ -67,13 +67,14 @@ Sebelum migrate: backup database, verifikasi restore, simpan `APP_KEY` productio
 
 ```bash
 composer dump-autoload -o
-php artisan filament:clear-cached-components
+php artisan filament:optimize-clear
 php artisan optimize:clear
 php artisan migrate --force
 php artisan dokumentasi:audit --details
 php artisan dokumentasi:migrate-device-credentials --dry-run
 php artisan dokumentasi:migrate-device-credentials
 php artisan optimize
+php artisan filament:optimize
 php artisan queue:restart
 ```
 
