@@ -21,7 +21,14 @@ class InfrastructureOverview extends BaseWidget
     protected function getStats(): array
     {
         $devices = Device::query()
-            ->with(['managementInterface:id,device_id,ip_address_id,is_management'])
+            ->with([
+                'managementInterface' => fn ($query) => $query->select([
+                    'device_interfaces.id',
+                    'device_interfaces.device_id',
+                    'device_interfaces.ip_address_id',
+                    'device_interfaces.is_management',
+                ]),
+            ])
             ->get([
                 'id',
                 'ip_address_id',
