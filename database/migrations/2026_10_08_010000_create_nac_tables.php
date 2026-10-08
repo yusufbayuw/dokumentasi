@@ -42,7 +42,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('nac_client_id')->constrained('nac_clients')->restrictOnDelete();
             $table->string('issuer', 512);
-            $table->string('serial_number', 255);
+            $table->string('serial_number', 128);
             $table->timestamp('valid_from');
             $table->timestamp('valid_until');
             $table->timestamp('revoked_at')->nullable()->index();

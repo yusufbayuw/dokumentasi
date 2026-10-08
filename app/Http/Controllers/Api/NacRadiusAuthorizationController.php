@@ -14,7 +14,7 @@ class NacRadiusAuthorizationController extends Controller
         $data = $request->validate([
             'ssid' => ['required', 'string', 'max:255'],
             'certificate_issuer' => ['required', 'string', 'max:512'],
-            'certificate_serial' => ['required', 'string', 'max:255'],
+            'certificate_serial' => ['required', 'string', 'max:128'],
             'tls_verified' => ['required', 'boolean'],
             'nas_identifier' => ['nullable', 'string', 'max:255'],
             'calling_station_id' => ['nullable', 'string', 'max:255'],
