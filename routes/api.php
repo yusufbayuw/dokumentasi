@@ -17,3 +17,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+
+// Trusted FreeRADIUS adapter only. Authentication is via a strong service key,
+// not the interactive Laravel/Filament session.
+Route::post('/nac/radius/authorize', \App\Http\Controllers\Api\NacRadiusAuthorizationController::class)
+    ->middleware(\App\Http\Middleware\AuthenticateNacRadius::class);

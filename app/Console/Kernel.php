@@ -13,6 +13,16 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
+        $schedule->call(function (): void {
+            $retentionDays = max(7, (int) config('nac.auth_history_retention_days', 90));
+            \App\Models\NacAuthEvent::query()
+                ->where('occurred_at', '<', now()->subDays($retentionDays))
+                ->delete();
+        })
+            ->name('prune-nac-auth-history')
+            ->dailyAt('02:40')
+            ->withoutOverlapping(30);
+
         $minutes = max(1, min(60, (int) config('cmdb.monitoring.schedule_minutes', 5)));
 
         $schedule->job(new PingIpAddress())

@@ -153,3 +153,18 @@ GitHub Actions menjalankan PHP syntax lint, Composer validation/install, test su
 ## Upgrade Framework
 
 Laravel 10 + Filament 3 dipertahankan pada hardening ini agar perubahan domain tidak bercampur dengan breaking framework upgrade. Setelah regression suite stabil, lakukan dependency compatibility audit dan upgrade dalam PR terpisah.
+
+
+## Network Access Control (NAC) — Fase 1
+
+Fondasi NAC WPA3-Enterprise telah ditambahkan sebagai modul **Network Access Control** pada Filament. Model \`NacClient\` untuk endpoint pengguna dipisah dari \`Device\` (inventaris infrastruktur), dengan relasi opsional ke CMDB. Pengelolaan hanya tersedia bagi role \`super_admin\`; penghapusan record NAC diblokir di UI agar jejak audit tidak hilang.
+
+- **Wi-Fi Networks**: SSID dan status enabled, awalnya nonaktif.
+- **Access Policies**: assignment VLAN berdasarkan role Spatie, prioritas tertinggi menang; awalnya nonaktif.
+- **Network Clients**: pengguna, perangkat, status \`pending|active|revoked\`.
+- **Certificates**: metadata issuer + serial + validitas + revocation; private key **tidak** disimpan.
+- **Authentication Logs**: setiap keputusan otorisasi di database, dengan pembersihan terjadwal.
+
+API otorisasi privat: \`POST /api/nac/radius/authorize\`, header \`X-NAC-Radius-Key\`, dan allowlist IP opsional. Kebijakan **fail closed** jika tidak ada jaringan, sertifikat, pengguna, perangkat, atau policy yang valid.
+
+**Ini baru fondasi aplikasi**: FreeRADIUS, EAP-TLS, PKI, UniFi, MikroTik, SSO/OIDC external, dan onboarding otomatis **belum** dikonfigurasi. Jangan mengaktifkan SSID produksi sebelum integrasi dan pengujian sertifikat selesai. Rincian kontrak API dan langkah implementasi: [docs/NAC-WPA3.md](docs/NAC-WPA3.md).
