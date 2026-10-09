@@ -168,3 +168,13 @@ Fondasi NAC WPA3-Enterprise telah ditambahkan sebagai modul **Network Access Con
 API otorisasi privat: `POST /api/nac/radius/authorize`, header `X-NAC-Radius-Key`, dan allowlist IP opsional. Kebijakan **fail closed** jika tidak ada jaringan, sertifikat, pengguna, perangkat, atau policy yang valid.
 
 **Ini baru fondasi aplikasi**: FreeRADIUS, EAP-TLS, PKI, UniFi, MikroTik, SSO/OIDC external, dan onboarding otomatis **belum** dikonfigurasi. Jangan mengaktifkan SSID produksi sebelum integrasi dan pengujian sertifikat selesai. Rincian kontrak API dan langkah implementasi: [docs/NAC-WPA3.md](docs/NAC-WPA3.md).
+
+
+## Integrasi MikroTik Hotspot (dipindahkan dari InvMan)
+
+Integrasi Hotspot lama dipusatkan di sini sebagai `MikroTikHotspotService` berbasis
+RouterOS v7 HTTPS REST API, dan **nonaktif secara default**. Tidak ada endpoint
+captive portal publik atau password router/user hard-coded. Uji operator via
+`php artisan hotspot:connect-user ... --confirm` hanya setelah pemeriksaan
+sertifikat TLS, host RouterOS, dan kredensial. Fitur ini independen dari NAC
+WPA3-Enterprise/EAP-TLS. Panduan: [docs/MIKROTIK-HOTSPOT.md](docs/MIKROTIK-HOTSPOT.md).
