@@ -4,6 +4,7 @@ namespace App\Console;
 
 use App\Jobs\PingIpAddress;
 use App\Jobs\RestartFingerprintDevice;
+use App\Support\FingerprintQueue;
 use App\Models\Device;
 use App\Models\DeviceMonitoringCheck;
 use Illuminate\Console\Scheduling\Schedule;
@@ -45,7 +46,7 @@ class Kernel extends ConsoleKernel
                     $deviceId,
                     null,
                     'scheduled',
-                )->onQueue('device-actions'));
+                )->onQueue(FingerprintQueue::NAME));
         })
             ->name('restart-opted-in-fingerprint-devices')
             ->dailyAt('03:00')

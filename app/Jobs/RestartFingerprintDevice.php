@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Device;
+use App\Support\FingerprintQueue;
 use App\Services\ActivityLogger;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,6 +26,8 @@ class RestartFingerprintDevice implements ShouldQueue
         public ?int $requestedBy = null,
         public string $source = 'scheduled',
     ) {
+        $this->onConnection(FingerprintQueue::CONNECTION)
+            ->onQueue(FingerprintQueue::NAME);
     }
 
     public function handle(): void

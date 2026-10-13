@@ -11,14 +11,14 @@ Halaman **Perangkat → Kelola Fingerprint** muncul hanya jika nama jenis perang
 - **Reboot**: action di baris perangkat dan tombol pada halaman Kelola Fingerprint terlihat bagi role `super_admin` atau pengguna dengan permission `update_device`. Penolakan akses dicek ulang saat action dipanggil.
 - **Riwayat Operasi**: status, jumlah rekaman hasil baca, kegagalan.
 
-Operasi perangkat berjalan via queue `device-actions`, bukan saat render halaman. Sync manual saja: tidak ada cron baru, tidak ada polling otomatis, tidak menghapus rekaman mesin. Tab Pengguna/Absensi dan ekspor hanya untuk `super_admin` atau permission `view_fingerprint_data`. Sinkronisasi serta kontrol memerlukan permission `update_device` atau `super_admin`. Perubahan jam mesin juga memerlukan `manage_fingerprint_clock` (atau role `super_admin`). Permission khusus dibuat saat migrasi tanpa otomatis diberikan kepada operator.
+Operasi perangkat berjalan via queue khusus `fingerprint` pada koneksi database tersendiri, bukan saat render halaman. Sync manual saja: tidak ada cron baru, tidak ada polling otomatis, tidak menghapus rekaman mesin. Tab Pengguna/Absensi dan ekspor hanya untuk `super_admin` atau permission `view_fingerprint_data`. Sinkronisasi serta kontrol memerlukan permission `update_device` atau `super_admin`. Perubahan jam mesin juga memerlukan `manage_fingerprint_clock` (atau role `super_admin`). Permission khusus dibuat saat migrasi tanpa otomatis diberikan kepada operator.
 
 ## Deploy
 
 1. Backup database, lalu `php artisan migrate --force`.
-2. `php artisan filament:optimize-clear` lalu `php artisan optimize:clear`.
+2. `php artisan filament:clear-cached-components` lalu `php artisan optimize:clear`.
 3. Pastikan ekstensi PHP **sockets** aktif dan UDP port **4370** dapat dijangkau dari server Laravel menuju mesin.
-4. Jalankan worker `php artisan queue:work --queue=device-actions,monitoring,default --sleep=2 --tries=1 --timeout=200`; untuk supervisor pilih timeout process yang tidak lebih kecil dari timeout job (180 detik), lalu `php artisan queue:restart`.
+4. Jalankan worker Supervisor khusus fingerprint dengan koneksi `fingerprint` dan 1 process: `php artisan queue:work fingerprint --queue=fingerprint --sleep=2 --tries=1 --timeout=200`. Koneksi ini memiliki `retry_after=240` untuk menangani job sinkronisasi hingga 180 detik. Worker ping berjalan terpisah di koneksi database dengan `--queue=monitoring,default`. Setelah perubahan, jalankan `php artisan queue:restart`. Job fingerprint lama yang sudah berada pada queue `device-actions` harus dituntaskan menggunakan worker lama sebelum dinonaktifkan.
 5. Login sebagai super_admin dan uji **Baca Info Mesin** pada satu mesin uji. Periksa tab Riwayat Operasi sebelum menarik pengguna/absensi.
 6. Waktu log disimpan sebagaimana di mesin, belum dikonversi ke zona waktu lain. Pastikan jam/timezone mesin sebelum ekspor.
 7. Beri akses `view_fingerprint_data` hanya kepada petugas yang berhak mengakses data kehadiran. Audit perizinan jika menambah role baru.

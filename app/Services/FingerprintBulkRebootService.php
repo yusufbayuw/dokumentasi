@@ -6,6 +6,7 @@ use App\Jobs\RestartFingerprintDevice;
 use App\Models\Device;
 use App\Models\User;
 use App\Support\FingerprintDevice;
+use App\Support\FingerprintQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -13,9 +14,9 @@ use Throwable;
 
 class FingerprintBulkRebootService
 {
-    // Stagger jobs even when multiple workers consume device-actions.
-    // Allow enough time for the existing job's timeout and retry backoff.
-    public const SPACING_SECONDS = 120;
+    // Release reboot jobs two seconds apart into the isolated fingerprint queue.
+    // Actual command timing depends on the worker and machine response.
+    public const SPACING_SECONDS = 2;
 
     public static function canRequest(?User $user): bool
     {
@@ -92,11 +93,11 @@ class FingerprintBulkRebootService
     {
         abort_unless(self::canRequest($actor), 403);
 
-        $connection = (string) config('queue.default', 'sync');
+        $connection = FingerprintQueue::CONNECTION;
         $driver = config("queue.connections.{$connection}.driver");
 
         if (! in_array($driver, ['database', 'redis', 'sqs', 'beanstalkd'], true)) {
-            throw new RuntimeException('Reboot All membutuhkan queue asinkron; QUEUE_CONNECTION tidak boleh sync/null.');
+            throw new RuntimeException('Reboot All membutuhkan koneksi fingerprint dengan queue driver asinkron.');
         }
 
         $lock = Cache::lock('fingerprint-reboot-all:dispatch', 120);
@@ -140,7 +141,7 @@ class FingerprintBulkRebootService
                         $deviceId,
                         (int) $actor->getKey(),
                         'bulk',
-                    )->onQueue('device-actions')
+                    )->onQueue(FingerprintQueue::NAME)
                         ->delay(now()->addSeconds(self::delaySeconds($queued)));
 
                     $queued++;

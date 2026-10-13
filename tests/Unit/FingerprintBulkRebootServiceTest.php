@@ -46,11 +46,11 @@ class FingerprintBulkRebootServiceTest extends TestCase
         ));
     }
 
-    public function test_batch_schedule_is_staggered_by_two_minutes(): void
+    public function test_batch_schedule_is_staggered_by_two_seconds(): void
     {
         $this->assertSame(0, FingerprintBulkRebootService::delaySeconds(0));
-        $this->assertSame(120, FingerprintBulkRebootService::delaySeconds(1));
-        $this->assertSame(360, FingerprintBulkRebootService::delaySeconds(3));
+        $this->assertSame(2, FingerprintBulkRebootService::delaySeconds(1));
+        $this->assertSame(6, FingerprintBulkRebootService::delaySeconds(3));
     }
 
     public function test_only_super_admin_can_request_fleet_reboot(): void

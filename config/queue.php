@@ -42,6 +42,16 @@ return [
             'after_commit' => false,
         ],
 
+        // Dedicated long-running fingerprint queue. Uses the existing jobs
+        // table but has independent retry_after, leaving ping/default unchanged.
+        'fingerprint' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'fingerprint',
+            'retry_after' => 240,
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => 'localhost',

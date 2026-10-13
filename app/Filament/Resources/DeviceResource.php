@@ -9,6 +9,7 @@ use App\Filament\Resources\DeviceResource\RelationManagers\MonitoringChecksRelat
 use App\Filament\Resources\DeviceResource\RelationManagers\MovementsRelationManager;
 use App\Jobs\RestartFingerprintDevice;
 use App\Support\FingerprintDevice;
+use App\Support\FingerprintQueue;
 use App\Forms\Components\LeafletMap;
 use App\Models\Device;
 use App\Models\Ruangan;
@@ -303,7 +304,7 @@ class DeviceResource extends Resource
                             $record->id,
                             auth()->id(),
                             'manual',
-                        )->onQueue('device-actions');
+                        )->onQueue(FingerprintQueue::NAME);
 
                         Notification::make()
                             ->title('Perintah reboot diantrikan')
