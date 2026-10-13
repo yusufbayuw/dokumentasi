@@ -1,6 +1,6 @@
 # Manajemen Fingerprint (rats/zkteco)
 
-Halaman **Perangkat → Kelola Fingerprint** muncul hanya jika nama jenis perangkat mengandung `finger`. Perangkat lain, relasi CMDB, dan alur reboot existing tidak diubah.
+Halaman **Perangkat → Kelola Fingerprint** muncul hanya jika nama jenis perangkat mengandung `finger`. Tombol operasional tersedia di dalam section **Aksi Fingerprint** pada isi halaman, bukan hanya pada toolbar header atau action row. Perangkat lain, relasi CMDB, dan alur reboot existing tidak diubah.
 
 ## Fitur
 
