@@ -49,6 +49,11 @@ class SyncFingerprintDevice implements ShouldQueue
             throw new RuntimeException('Tidak berhak membaca data kehadiran fingerprint.');
         }
 
+        if ($this->operation === 'clock' &&
+            ! ($user->hasRole('super_admin') || $user->can('manage_fingerprint_clock'))) {
+            throw new RuntimeException('Tidak berhak mengubah jam mesin fingerprint.');
+        }
+
         $lock = Cache::lock('fingerprint-device-'.$device->id, 210);
         if (! $lock->get()) {
             throw new RuntimeException('Operasi lain sedang berjalan pada mesin ini.');

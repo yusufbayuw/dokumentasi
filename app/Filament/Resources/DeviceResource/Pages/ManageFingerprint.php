@@ -53,6 +53,14 @@ class ManageFingerprint extends Page
         return (bool) ($user && ($user->hasRole('super_admin') || $user->can('update_device')));
     }
 
+    public function canSetClock(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user && $this->canManage() &&
+            ($user->hasRole('super_admin') || $user->can('manage_fingerprint_clock')));
+    }
+
     public function canViewSensitive(): bool
     {
         $user = auth()->user();
@@ -84,7 +92,7 @@ class ManageFingerprint extends Page
                 ->color('warning')
                 ->requiresConfirmation()
                 ->modalDescription('Jam mesin akan disesuaikan dengan timezone server aplikasi. Periksa timezone sebelum melanjutkan.')
-                ->visible(fn (): bool => $this->canManage())
+                ->visible(fn (): bool => $this->canSetClock())
                 ->action(fn () => $this->enqueue('clock')),
             Action::make('reboot')
                 ->label('Reboot')
@@ -105,6 +113,10 @@ class ManageFingerprint extends Page
     public function enqueue(string $operation): void
     {
         abort_unless($this->canManage() && FingerprintDevice::isSupported($this->record), 403);
+
+        if ($operation === 'clock') {
+            abort_unless($this->canSetClock(), 403);
+        }
 
         if (in_array($operation, ['users', 'attendance'], true)) {
             abort_unless($this->canViewSensitive(), 403);

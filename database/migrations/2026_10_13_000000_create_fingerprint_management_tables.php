@@ -60,6 +60,7 @@ return new class extends Migration
         // Permission is intentionally not granted to any role by default.
         if (Schema::hasTable('permissions')) {
             Permission::findOrCreate('view_fingerprint_data', 'web');
+            Permission::findOrCreate('manage_fingerprint_clock', 'web');
         }
     }
 

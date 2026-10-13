@@ -11,7 +11,7 @@ Halaman **Perangkat → Kelola Fingerprint** muncul hanya jika nama jenis perang
 - **Reboot**: tombol lama tetap tersedia dan juga ada pada halaman.
 - **Riwayat Operasi**: status, jumlah rekaman hasil baca, kegagalan.
 
-Operasi perangkat berjalan via queue `device-actions`, bukan saat render halaman. Sync manual saja: tidak ada cron baru, tidak ada polling otomatis, tidak menghapus rekaman mesin. Tab Pengguna/Absensi dan ekspor hanya untuk `super_admin` atau permission `view_fingerprint_data`. Sinkronisasi serta kontrol memerlukan permission `update_device` atau `super_admin`.
+Operasi perangkat berjalan via queue `device-actions`, bukan saat render halaman. Sync manual saja: tidak ada cron baru, tidak ada polling otomatis, tidak menghapus rekaman mesin. Tab Pengguna/Absensi dan ekspor hanya untuk `super_admin` atau permission `view_fingerprint_data`. Sinkronisasi serta kontrol memerlukan permission `update_device` atau `super_admin`. Perubahan jam mesin juga memerlukan `manage_fingerprint_clock` (atau role `super_admin`). Permission khusus dibuat saat migrasi tanpa otomatis diberikan kepada operator.
 
 ## Deploy
 
