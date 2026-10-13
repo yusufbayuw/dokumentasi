@@ -295,20 +295,19 @@ class DeviceResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Reboot perangkat fingerprint?')
                     ->modalDescription('Perangkat akan restart dan dapat tidak tersedia sementara. Pastikan tidak sedang digunakan untuk proses absensi penting.')
-                    ->visible(function (Device $device): bool {
-                        return str_contains(strtolower((string) $device->type?->nama), 'finger')
-                            && (auth()->user()?->can('update_device') ?? false);
-                    })
-                    ->action(function (Device $device): void {
+                    ->visible(fn (Device $record): bool => FingerprintDevice::canRestart($record, auth()->user()))
+                    ->action(function (Device $record): void {
+                        abort_unless(FingerprintDevice::canRestart($record, auth()->user()), 403);
+
                         RestartFingerprintDevice::dispatch(
-                            $device->id,
+                            $record->id,
                             auth()->id(),
                             'manual',
                         )->onQueue('device-actions');
 
                         Notification::make()
                             ->title('Perintah reboot diantrikan')
-                            ->body("Reboot {$device->nama} akan diproses oleh queue worker.")
+                            ->body("Reboot {$record->nama} akan diproses oleh queue worker.")
                             ->success()
                             ->send();
                     }),
