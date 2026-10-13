@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Device;
+use App\Models\User;
 use RuntimeException;
 
 final class FingerprintDevice
@@ -10,6 +11,17 @@ final class FingerprintDevice
     public static function isSupported(Device $device): bool
     {
         return str_contains(mb_strtolower((string) $device->type?->nama), 'finger');
+    }
+
+    /**
+     * Align the row action with the management page. Shield's super_admin
+     * role is not configured to implicitly satisfy Gate permissions.
+     */
+    public static function canRestart(Device $device, ?User $user): bool
+    {
+        return self::isSupported($device)
+            && $user !== null
+            && ($user->hasRole('super_admin') || $user->can('update_device'));
     }
 
     public static function address(Device $device): string

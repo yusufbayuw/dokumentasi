@@ -8,7 +8,7 @@ Halaman **Perangkat → Kelola Fingerprint** muncul hanya jika nama jenis perang
 - **Sinkron Pengguna**: ID, UID, nama dan role, tanpa menyimpan kata sandi, nomor kartu atau template biometrik.
 - **Tarik Log Absensi**: seluruh log dibaca dari mesin, dideduplikasi menggunakan hash per perangkat, disimpan tanpa pernah menghapus log pada perangkat; pencarian dan ekspor CSV.
 - **Samakan Jam**: perintah tulis yang membutuhkan konfirmasi; jam disetel dari timezone Laravel. Pastikan `APP_TIMEZONE`/timezone config aplikasi benar.
-- **Reboot**: tombol lama tetap tersedia dan juga ada pada halaman.
+- **Reboot**: action di baris perangkat dan tombol pada halaman Kelola Fingerprint terlihat bagi role `super_admin` atau pengguna dengan permission `update_device`. Penolakan akses dicek ulang saat action dipanggil.
 - **Riwayat Operasi**: status, jumlah rekaman hasil baca, kegagalan.
 
 Operasi perangkat berjalan via queue `device-actions`, bukan saat render halaman. Sync manual saja: tidak ada cron baru, tidak ada polling otomatis, tidak menghapus rekaman mesin. Tab Pengguna/Absensi dan ekspor hanya untuk `super_admin` atau permission `view_fingerprint_data`. Sinkronisasi serta kontrol memerlukan permission `update_device` atau `super_admin`. Perubahan jam mesin juga memerlukan `manage_fingerprint_clock` (atau role `super_admin`). Permission khusus dibuat saat migrasi tanpa otomatis diberikan kepada operator.

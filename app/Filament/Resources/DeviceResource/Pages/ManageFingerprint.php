@@ -48,9 +48,7 @@ class ManageFingerprint extends Page
 
     public function canManage(): bool
     {
-        $user = auth()->user();
-
-        return (bool) ($user && ($user->hasRole('super_admin') || $user->can('update_device')));
+        return FingerprintDevice::canRestart($this->record, auth()->user());
     }
 
     public function canSetClock(): bool
