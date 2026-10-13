@@ -1,5 +1,27 @@
 <x-filament-panels::page>
     <div x-data="{ tab: 'overview' }" class="space-y-6">
+        <x-filament::section heading="Aksi Fingerprint">
+            @if ($this->canManage())
+                <div class="flex flex-wrap items-center gap-3">
+                    <x-filament::actions :actions="[
+                        $this->getAction('information'),
+                        $this->getAction('users'),
+                        $this->getAction('attendance'),
+                        $this->getAction('clock'),
+                        $this->getAction('reboot'),
+                    ]" />
+                </div>
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                    Perintah dijalankan melalui queue device-actions; status dapat diperiksa di Riwayat Operasi.
+                    Beberapa aksi hanya tersedia bagi operator dengan izin tambahan.
+                </p>
+            @else
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Mode hanya baca. Untuk menjalankan operasi fingerprint, administrator perlu memberikan
+                    permission update_device atau role super_admin. Tombol operasi sengaja tidak ditampilkan tanpa izin.
+                </p>
+            @endif
+        </x-filament::section>
         <div class="flex flex-wrap gap-2" role="tablist" aria-label="Manajemen fingerprint">
             @foreach (['overview' => 'Ringkasan & Info', 'users' => 'Pengguna', 'attendance' => 'Log Absensi', 'history' => 'Riwayat Operasi'] as $key => $label)
                 @if ($key === 'overview' || $key === 'history' || $sensitive)

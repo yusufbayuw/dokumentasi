@@ -66,46 +66,64 @@ class ManageFingerprint extends Page
         return (bool) ($user && ($user->hasRole('super_admin') || $user->can('view_fingerprint_data')));
     }
 
-    protected function getHeaderActions(): array
+    // Filament actions are registered by method name and rendered explicitly
+    // in the page body, rather than depending on header placement.
+    public function informationAction(): Action
     {
-        return [
-            Action::make('information')
-                ->label('Baca Info Mesin')
-                ->icon('heroicon-o-information-circle')
-                ->visible(fn (): bool => $this->canManage())
-                ->action(fn () => $this->enqueue('information')),
-            Action::make('users')
-                ->label('Sinkron Pengguna')
-                ->icon('heroicon-o-users')
-                ->visible(fn (): bool => $this->canManage() && $this->canViewSensitive())
-                ->action(fn () => $this->enqueue('users')),
-            Action::make('attendance')
-                ->label('Tarik Log Absensi')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->visible(fn (): bool => $this->canManage() && $this->canViewSensitive())
-                ->action(fn () => $this->enqueue('attendance')),
-            Action::make('clock')
-                ->label('Samakan Jam')
-                ->icon('heroicon-o-clock')
-                ->color('warning')
-                ->requiresConfirmation()
-                ->modalDescription('Jam mesin akan disesuaikan dengan timezone server aplikasi. Periksa timezone sebelum melanjutkan.')
-                ->visible(fn (): bool => $this->canSetClock())
-                ->action(fn () => $this->enqueue('clock')),
-            Action::make('reboot')
-                ->label('Reboot')
-                ->icon('heroicon-o-arrow-path')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->modalDescription('Mesin akan terputus sementara. Hindari jam absensi.')
-                ->visible(fn (): bool => $this->canManage())
-                ->action(function (): void {
-                    abort_unless($this->canManage() && FingerprintDevice::isSupported($this->record), 403);
-                    RestartFingerprintDevice::dispatch($this->record->id, auth()->id(), 'manual')
-                        ->onQueue('device-actions');
-                    Notification::make()->title('Perintah reboot diantrikan')->success()->send();
-                }),
-        ];
+        return Action::make('information')
+            ->label('Baca Info Mesin')
+            ->icon('heroicon-o-information-circle')
+            ->visible(fn (): bool => $this->canManage())
+            ->action(fn () => $this->enqueue('information'));
+    }
+
+    public function usersAction(): Action
+    {
+        return Action::make('users')
+            ->label('Sinkron Pengguna')
+            ->icon('heroicon-o-users')
+            ->visible(fn (): bool => $this->canManage() && $this->canViewSensitive())
+            ->action(fn () => $this->enqueue('users'));
+    }
+
+    public function attendanceAction(): Action
+    {
+        return Action::make('attendance')
+            ->label('Tarik Log Absensi')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn (): bool => $this->canManage() && $this->canViewSensitive())
+            ->action(fn () => $this->enqueue('attendance'));
+    }
+
+    public function clockAction(): Action
+    {
+        return Action::make('clock')
+            ->label('Samakan Jam')
+            ->icon('heroicon-o-clock')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->modalDescription('Jam mesin akan disesuaikan dengan timezone server aplikasi. Periksa timezone sebelum melanjutkan.')
+            ->visible(fn (): bool => $this->canSetClock())
+            ->action(fn () => $this->enqueue('clock'));
+    }
+
+    public function rebootAction(): Action
+    {
+        return Action::make('reboot')
+            ->label('Reboot')
+            ->icon('heroicon-o-arrow-path')
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalDescription('Mesin akan terputus sementara. Hindari jam absensi.')
+            ->visible(fn (): bool => $this->canManage())
+            ->action(function (): void {
+                abort_unless($this->canManage() && FingerprintDevice::isSupported($this->record), 403);
+
+                RestartFingerprintDevice::dispatch($this->record->id, auth()->id(), 'manual')
+                    ->onQueue('device-actions');
+
+                Notification::make()->title('Perintah reboot diantrikan')->success()->send();
+            });
     }
 
     public function enqueue(string $operation): void
