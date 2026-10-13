@@ -38,7 +38,7 @@ class ListDevices extends ListRecords
 
                     return "Ditemukan {$plan['total']} fingerprint; {$plan['eligible']} dengan IPv4 management valid "
                         ."akan diantrikan, sedangkan {$plan['skipped']} dilewati. "
-                        .'Mesin dijadwalkan bertahap tiap 2 menit tanpa memerhatikan filter/tabs tabel. '
+                        .'Mesin dijadwalkan bertahap tiap 2 detik tanpa memerhatikan filter/tabs tabel. '
                         .'Ini dapat mengganggu absensi dan bukan operasi yang bisa dibatalkan otomatis.';
                 })
                 ->form([
@@ -58,9 +58,9 @@ class ListDevices extends ListRecords
 
                         Notification::make()
                             ->title('Reboot All berhasil dijadwalkan')
-                            ->body("{$result['queued']} fingerprint diantrikan bertahap setiap 2 menit; "
+                            ->body("{$result['queued']} fingerprint diantrikan bertahap setiap 2 detik; "
                                 ."{$result['skipped']} dilewati karena IPv4 belum valid. "
-                                .'Pastikan worker queue device-actions aktif.')
+                                .'Pastikan worker khusus queue fingerprint aktif.')
                             ->success()
                             ->persistent()
                             ->send();

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Device;
+use App\Support\FingerprintQueue;
 use App\Models\User;
 use App\Services\FingerprintService;
 use App\Support\FingerprintDevice;
@@ -28,6 +29,8 @@ class SyncFingerprintDevice implements ShouldQueue
         public int $requestedBy,
         public string $operation,
     ) {
+        $this->onConnection(FingerprintQueue::CONNECTION)
+            ->onQueue(FingerprintQueue::NAME);
     }
 
     public function handle(FingerprintService $service): void

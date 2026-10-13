@@ -92,11 +92,17 @@ Scheduler server wajib berjalan setiap menit:
 
 Scheduler aplikasi dispatch monitoring tiap 5 menit dan hanya me-reboot fingerprint dengan `auto_reboot_enabled = true` pada pukul 03:00. Tidak ada lagi reboot otomatis global.
 
-Default `.env.example` menggunakan database queue. Contoh worker:
+Default `.env.example` menggunakan database queue. **Pisahkan Supervisor ping/monitoring dari Supervisor fingerprint**. Gunakan direktori kerja Laravel yang sama dan user proses web (`www` pada aaPanel):
 
 ```bash
-php artisan queue:work --queue=device-actions,monitoring,default --sleep=2 --tries=3 --timeout=60
+# Supervisor monitoring dan pekerjaan umum
+php artisan queue:work database --queue=monitoring,default --sleep=2 --tries=3 --timeout=60
+
+# Supervisor khusus fingerprint (1 process)
+php artisan queue:work fingerprint --queue=fingerprint --sleep=2 --tries=1 --timeout=200
 ```
+
+Koneksi `fingerprint` menggunakan tabel `jobs` existing dengan `retry_after=240` (lebih besar daripada job sinkronisasi 180 detik dan batas worker 200 detik), **tanpa mengubah konfigurasi queue ping**. Seluruh aksi mesin fingerprint (termasuk Reboot All 2 detik per jadwal pengiriman) menggunakan queue khusus ini. Jeda 2 detik merupakan jadwal kesiapan job, bukan interval reboot fisik yang dijamin. Job lama pada `device-actions` tidak pindah otomatis; selesaikan antrean lama secara terkendali sebelum mematikan worker sebelumnya. Lakukan `php artisan queue:restart` setelah pembaruan dan pastikan Supervisor melakukan restart worker otomatis.
 
 ## Monitoring
 

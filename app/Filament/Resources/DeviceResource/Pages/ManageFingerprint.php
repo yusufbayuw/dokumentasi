@@ -7,6 +7,7 @@ use App\Jobs\RestartFingerprintDevice;
 use App\Jobs\SyncFingerprintDevice;
 use App\Models\Device;
 use App\Support\FingerprintDevice;
+use App\Support\FingerprintQueue;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
@@ -120,7 +121,7 @@ class ManageFingerprint extends Page
                 abort_unless($this->canManage() && FingerprintDevice::isSupported($this->record), 403);
 
                 RestartFingerprintDevice::dispatch($this->record->id, auth()->id(), 'manual')
-                    ->onQueue('device-actions');
+                    ->onQueue(FingerprintQueue::NAME);
 
                 Notification::make()->title('Perintah reboot diantrikan')->success()->send();
             });
@@ -141,7 +142,7 @@ class ManageFingerprint extends Page
         abort_unless(in_array($operation, ['information', 'users', 'attendance', 'clock'], true), 404);
 
         SyncFingerprintDevice::dispatch($this->record->id, (int) auth()->id(), $operation)
-            ->onQueue('device-actions');
+            ->onQueue(FingerprintQueue::NAME);
 
         Notification::make()
             ->title('Operasi diantrikan')
