@@ -8,6 +8,7 @@ use App\Filament\Resources\DeviceResource\RelationManagers\MaintenancesRelationM
 use App\Filament\Resources\DeviceResource\RelationManagers\MonitoringChecksRelationManager;
 use App\Filament\Resources\DeviceResource\RelationManagers\MovementsRelationManager;
 use App\Jobs\RestartFingerprintDevice;
+use App\Support\FingerprintDevice;
 use App\Forms\Components\LeafletMap;
 use App\Models\Device;
 use App\Models\Ruangan;
@@ -277,6 +278,16 @@ class DeviceResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('manageFingerprint')
+                    ->label('Kelola Fingerprint')
+                    ->icon('heroicon-o-finger-print')
+                    ->color('info')
+                    ->url(fn (Device $record): string => static::getUrl('fingerprint', ['record' => $record]))
+                    ->visible(fn (Device $record): bool =>
+                        FingerprintDevice::isSupported($record) &&
+                        (auth()->user()?->hasRole('super_admin') ||
+                            auth()->user()?->can('view_device') ||
+                            auth()->user()?->can('view_any_device'))),
                 Tables\Actions\Action::make('restart')
                     ->label('Reboot')
                     ->icon('heroicon-o-arrow-path')
@@ -315,6 +326,7 @@ class DeviceResource extends Resource
             ->with([
                 'ip',
                 'managementInterface.ipAddress',
+                'type',
             ]);
     }
 
@@ -334,6 +346,7 @@ class DeviceResource extends Resource
             'index' => Pages\ListDevices::route('/'),
             'create' => Pages\CreateDevice::route('/create'),
             'edit' => Pages\EditDevice::route('/{record}/edit'),
+            'fingerprint' => Pages\ManageFingerprint::route('/{record}/fingerprint'),
         ];
     }
 
