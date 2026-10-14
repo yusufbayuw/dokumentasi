@@ -81,6 +81,13 @@ class ListDevices extends ListRecords
         ];
     }
 
+    public function exportFingerprintAttendance(int $deviceId): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $device = \App\Models\Device::with('type')->findOrFail($deviceId);
+
+        return \App\Support\FingerprintManagement::exportAttendance($device, auth()->user());
+    }
+
     public function getTabs(): array
     {
         $tabs = ['all' => Tab::make('All')->badge($this->getModel()::count())];

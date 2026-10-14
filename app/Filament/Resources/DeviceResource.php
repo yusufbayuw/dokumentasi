@@ -9,6 +9,7 @@ use App\Filament\Resources\DeviceResource\RelationManagers\MonitoringChecksRelat
 use App\Filament\Resources\DeviceResource\RelationManagers\MovementsRelationManager;
 use App\Jobs\RestartFingerprintDevice;
 use App\Support\FingerprintDevice;
+use App\Support\FingerprintManagement;
 use App\Support\FingerprintQueue;
 use App\Forms\Components\LeafletMap;
 use App\Models\Device;
@@ -283,12 +284,47 @@ class DeviceResource extends Resource
                     ->label('Kelola Fingerprint')
                     ->icon('heroicon-o-finger-print')
                     ->color('info')
-                    ->url(fn (Device $record): string => static::getUrl('fingerprint', ['record' => $record]))
                     ->visible(fn (Device $record): bool =>
                         FingerprintDevice::isSupported($record) &&
-                        (auth()->user()?->hasRole('super_admin') ||
-                            auth()->user()?->can('view_device') ||
-                            auth()->user()?->can('view_any_device'))),
+                        FingerprintManagement::canView(auth()->user()))
+                    ->modalHeading(fn (Device $record): string => 'Kelola Fingerprint: '.$record->nama)
+                    ->modalDescription('Data tersimpan ditampilkan dalam tab. Jalankan operasi melalui formulir di bawah bila memiliki izin.')
+                    ->modalWidth('7xl')
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalContent(fn (Device $record) => view(
+                        'filament.resources.device-resource.modals.manage-fingerprint',
+                        FingerprintManagement::data($record, auth()->user()),
+                    ))
+                    ->form(fn (Device $record): array => FingerprintDevice::canRestart($record, auth()->user()) ? [
+                        Forms\Components\Select::make('operation')
+                            ->label('Operasi Fingerprint')
+                            ->placeholder('Pilih perintah untuk diantrikan')
+                            ->options(fn (): array => FingerprintManagement::operationOptions($record, auth()->user()))
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('confirmRisk', false)),
+                        Forms\Components\Checkbox::make('confirmRisk')
+                            ->label('Saya memahami perintah ini mengubah kondisi mesin dan dapat mengganggu absensi.')
+                            ->accepted()
+                            ->visible(fn (Forms\Get $get): bool => in_array($get('operation'), ['clock', 'reboot'], true)),
+                    ] : [])
+                    ->modalSubmitActionLabel('Antrikan Operasi')
+                    ->modalSubmitAction(fn (\Filament\Actions\StaticAction $action, Device $record) =>
+                        $action->visible(FingerprintDevice::canRestart($record, auth()->user())))
+                    ->action(function (Device $record, array $data): void {
+                        FingerprintManagement::enqueue(
+                            $record,
+                            auth()->user(),
+                            $data['operation'] ?? '',
+                            (bool) ($data['confirmRisk'] ?? false),
+                        );
+
+                        Notification::make()
+                            ->title('Perintah fingerprint diantrikan')
+                            ->body('Operasi diproses oleh worker khusus fingerprint. Buka kembali modal untuk melihat hasilnya.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('restart')
                     ->label('Reboot')
                     ->icon('heroicon-o-arrow-path')
@@ -346,7 +382,6 @@ class DeviceResource extends Resource
             'index' => Pages\ListDevices::route('/'),
             'create' => Pages\CreateDevice::route('/create'),
             'edit' => Pages\EditDevice::route('/{record}/edit'),
-            'fingerprint' => Pages\ManageFingerprint::route('/{record}/fingerprint'),
         ];
     }
 
