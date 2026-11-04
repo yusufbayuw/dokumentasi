@@ -2,11 +2,14 @@
 
 namespace App\Support;
 
+use App\Exports\FingerprintUsersExport;
 use App\Jobs\RestartFingerprintDevice;
 use App\Jobs\SyncFingerprintDevice;
 use App\Models\Device;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class FingerprintManagement
@@ -111,6 +114,15 @@ final class FingerprintManagement
 
         SyncFingerprintDevice::dispatch($device->getKey(), $user->getKey(), $operation)
             ->onQueue(FingerprintQueue::NAME);
+    }
+
+    public static function exportUsers(Device $device, ?User $user): BinaryFileResponse
+    {
+        abort_unless(FingerprintDevice::isSupported($device) && self::canViewSensitive($user), 403);
+
+        $id = (int) $device->getKey();
+
+        return Excel::download(new FingerprintUsersExport($id), 'fingerprint-pengguna-'.$id.'.xlsx');
     }
 
     public static function exportAttendance(Device $device, ?User $user): StreamedResponse

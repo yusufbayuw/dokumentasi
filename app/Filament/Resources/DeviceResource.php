@@ -288,7 +288,7 @@ class DeviceResource extends Resource
                         FingerprintDevice::isSupported($record) &&
                         FingerprintManagement::canView(auth()->user()))
                     ->modalHeading(fn (Device $record): string => 'Kelola Fingerprint: '.$record->nama)
-                    ->modalDescription('Data tersimpan ditampilkan dalam tab. Jalankan operasi melalui formulir di bawah bila memiliki izin.')
+                    ->modalDescription('Data tersimpan akan diperbarui berkala selama modal terbuka. Jalankan operasi melalui formulir di bawah bila memiliki izin.')
                     ->modalWidth('7xl')
                     ->modalCancelActionLabel('Tutup')
                     ->modalContent(fn (Device $record) => view(
@@ -311,7 +311,7 @@ class DeviceResource extends Resource
                     ->modalSubmitActionLabel('Antrikan Operasi')
                     ->modalSubmitAction(fn (\Filament\Actions\StaticAction $action, Device $record) =>
                         $action->visible(FingerprintDevice::canRestart($record, auth()->user())))
-                    ->action(function (Device $record, array $data): void {
+                    ->action(function (Tables\Actions\Action $action, Device $record, array $data): void {
                         FingerprintManagement::enqueue(
                             $record,
                             auth()->user(),
@@ -321,9 +321,12 @@ class DeviceResource extends Resource
 
                         Notification::make()
                             ->title('Perintah fingerprint diantrikan')
-                            ->body('Operasi diproses oleh worker khusus fingerprint. Buka kembali modal untuk melihat hasilnya.')
+                            ->body('Operasi diproses oleh worker khusus fingerprint. Pantau hasilnya di tab Riwayat Operasi tanpa menutup modal.')
                             ->success()
                             ->send();
+
+                        // Halt Filament's modal teardown; the queue dispatch already succeeded.
+                        $action->halt();
                     }),
                 Tables\Actions\Action::make('restart')
                     ->label('Reboot')

@@ -1,4 +1,7 @@
-<div x-data="{ tab: 'overview', searchUser: '', searchAttendance: '' }" class="space-y-5">
+<div x-data="{ tab: 'overview', searchUser: '', searchAttendance: '' }"
+    wire:key="fingerprint-management-{{ (int) $device->getKey() }}"
+    wire:poll.10s
+    class="space-y-5">
     <div class="flex flex-wrap gap-2" role="tablist" aria-label="Manajemen fingerprint">
         @foreach (['overview' => 'Ringkasan', 'users' => 'Pengguna', 'attendance' => 'Absensi', 'history' => 'Riwayat Operasi'] as $key => $label)
             @if ($key === 'overview' || $key === 'history' || $sensitive)
@@ -47,10 +50,16 @@
     @if ($sensitive)
         <div x-show="tab === 'users'" x-cloak class="space-y-3">
             <x-filament::section heading="Pengguna Mesin (Snapshot)">
-                <p class="mb-3 text-sm text-gray-500">Total tersimpan: {{ number_format($userCount) }}. Sinkron terakhir: {{ $snapshot?->users_synced_at ?? 'Belum pernah' }}. Pencarian berlaku untuk maksimal 100 baris yang ditampilkan. Kata sandi dan template biometrik tidak disimpan.</p>
-                <input type="search" x-model="searchUser" placeholder="Cari ID atau nama dari hasil ini..."
-                    class="mb-3 w-full rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900"
-                    aria-label="Cari pengguna fingerprint" />
+                <p class="mb-3 text-sm text-gray-500">Total tersimpan: {{ number_format($userCount) }}. Sinkron terakhir: {{ $snapshot?->users_synced_at ?? 'Belum pernah' }}. Pencarian berlaku untuk maksimal 100 baris yang ditampilkan; unduhan XLSX mencakup seluruh pengguna tersimpan. Kata sandi dan template biometrik tidak disimpan.</p>
+                <div class="mb-3 flex flex-wrap items-center gap-3">
+                    <input type="search" x-model="searchUser" placeholder="Cari ID atau nama dari hasil ini..."
+                        class="min-w-0 flex-1 rounded-lg border-gray-300 text-sm dark:border-gray-700 dark:bg-gray-900"
+                        aria-label="Cari pengguna fingerprint" />
+                    <x-filament::button type="button" color="gray" size="sm" icon="heroicon-o-arrow-down-tray"
+                        wire:click="exportFingerprintUsers({{ (int) $device->getKey() }})"
+                        wire:loading.attr="disabled"
+                        wire:target="exportFingerprintUsers">Unduh seluruh XLSX</x-filament::button>
+                </div>
                 <div class="max-h-72 overflow-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="sticky top-0 bg-white dark:bg-gray-900"><tr class="border-b dark:border-gray-700"><th class="p-2">ID</th><th class="p-2">UID</th><th class="p-2">Nama</th><th class="p-2">Role</th><th class="p-2">Terakhir Terbaca</th></tr></thead>
@@ -103,7 +112,7 @@
 
     <div x-show="tab === 'history'" x-cloak>
         <x-filament::section heading="Riwayat Operasi">
-            <p class="mb-3 text-xs text-gray-500">Queue khusus fingerprint memproses perintah di belakang layar. Tutup dan buka kembali modal untuk memperbarui status.</p>
+            <p class="mb-3 text-xs text-gray-500">Queue khusus fingerprint memproses perintah di belakang layar. Status dan hasil diperbarui otomatis setiap 10 detik selama modal terbuka.</p>
             <div class="max-h-72 overflow-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="sticky top-0 bg-white dark:bg-gray-900"><tr class="border-b dark:border-gray-700"><th class="p-2">Dikirim</th><th class="p-2">Operasi</th><th class="p-2">Status</th><th class="p-2">Jumlah</th><th class="p-2">Keterangan</th></tr></thead>
