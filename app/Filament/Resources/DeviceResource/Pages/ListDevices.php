@@ -81,6 +81,13 @@ class ListDevices extends ListRecords
         ];
     }
 
+    public function exportFingerprintUsers(int $deviceId): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $device = \App\Models\Device::with('type')->findOrFail($deviceId);
+
+        return \App\Support\FingerprintManagement::exportUsers($device, auth()->user());
+    }
+
     public function exportFingerprintAttendance(int $deviceId): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $device = \App\Models\Device::with('type')->findOrFail($deviceId);
