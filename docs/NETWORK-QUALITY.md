@@ -1,4 +1,4 @@
-# Network Quality Monitoring (Fase 0-3)
+# Network Quality Monitoring (Fase 0-4)
 
 This opt-in module is intentionally independent of the legacy device ping.
 It adds ICMP multi-sample RTT/packet-loss/RTT variation, DNS A lookups, TCP
@@ -83,3 +83,51 @@ connectivity, HTTPS status checks, an operational dashboard and service targets.
   memperbarui diri setiap 15 detik selama terbuka.
 - Aksi **Buka Perangkat** dan **Target Layanan** hanya tampil sesuai
   hak akses dan tipe target. Tidak ada migrasi, cron, atau worker baru.
+
+## Phase 4: SNMPv3 interface telemetry (opt-in)
+
+- All code paths are inactive until **both** NETWORK_QUALITY_ENABLED=true and
+  NETWORK_QUALITY_SNMP_ENABLED=true. Adding migration alone does not contact
+  network devices. Existing ping, topology, device health, and fingerprint jobs
+  remain separate.
+- Install and enable the **php82-snmp** extension through aaPanel for the
+  exact CLI PHP used by the queue worker (example check:
+  /www/server/php/82/bin/php -m | grep -i snmp). If missing, collector writes
+  an unknown measurement with snmp_extension_missing instead of marking the
+  port down.
+- SNMP read access is **v3 authPriv only**, AES privacy; supported authentication
+  algorithms are SHA256, SHA512 (Net-SNMP version permitting), and SHA for older
+  devices. MD5, DES, noAuthNoPriv, SNMPv1/v2c are deliberately excluded.
+- Grant a read-only SNMPv3 user on each switch/router with UDP 161 restricted
+  to the monitoring server. In **Perangkat > edit > Monitoring SNMPv3**,
+  configure a unique profile. Secrets are encrypted via Laravel APP_KEY and
+  never populated into edit forms. Do not rotate APP_KEY without planning
+  re-encryption of existing credentials.
+- Existing CMDB interfaces are matched automatically to IF-MIB ifName **only
+  when a unique exact match exists**. If the model uses nonmatching naming,
+  enter the numeric SNMP ifIndex in the existing Interface Jaringan tab.
+  No new CMDB devices/interfaces are created by SNMP; no topology is modified.
+- OIDs queried: ifHCInOctets, ifHCOutOctets (64-bit), ifInErrors, ifOutErrors,
+  ifOperStatus, ifHighSpeed. Traffic rates require **two consecutive successful
+  samples** and represent approximate measured Mbps at the interface, not a
+  guaranteed ISP or end-to-end application speed. Error counts are deltas for
+  the sampling window. Counter reset/wrap, invalid result, or unexpectedly
+  high rates are *not* interpreted as valid throughput.
+- Open **Infrastruktur > Traffic Interface** to inspect current RX/TX, port
+  status, error deltas and 24h history; the page uses native Filament tables
+  and charts. Privileged operators can queue an on-demand sample. Only the
+  existing network-quality queue worker is required, but SNMP polls share its
+  capacity with quality probes; begin with a small device cap.
+- Example .env values for a cautious pilot:
+
+  NETWORK_QUALITY_SNMP_ENABLED=true
+  NETWORK_QUALITY_SNMP_INTERVAL_MINUTES=5
+  NETWORK_QUALITY_SNMP_MAX_DEVICES=10
+  NETWORK_QUALITY_SNMP_MAX_INTERFACES=16
+
+- Back up DB, run php artisan migrate --force, rebuild configuration cache
+  **as the www user**, then restart queue workers. Verify the PHP CLI
+  extension and SNMP read permissions before expanding scope.
+- Retention of SNMP samples follows network-quality retention days (min 7).
+- Roll back operations by setting NETWORK_QUALITY_SNMP_ENABLED=false, clearing
+  config cache, and restarting workers. Do not drop tables automatically.
