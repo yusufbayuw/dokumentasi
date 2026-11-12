@@ -6,6 +6,7 @@ use App\Filament\Resources\DeviceResource;
 use App\Jobs\PollDeviceSnmp;
 use App\Models\NetworkInterfaceSample;
 use App\Models\Unit;
+use App\NetworkMonitoring\SnmpProtocolPolicy;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -25,7 +26,7 @@ class NetworkInterfaces extends Page implements HasTable
     protected static ?string $navigationGroup = 'Infrastruktur';
     protected static ?string $navigationLabel = 'Traffic Interface';
     protected static ?int $navigationSort = 7;
-    protected static ?string $title = 'Traffic & Error Interface (SNMPv3)';
+    protected static ?string $title = 'Traffic & Error Interface (SNMPv3 / v2c)';
     protected static string $view = 'filament.pages.network-interfaces';
 
     public static function canAccess(): bool
@@ -50,6 +51,12 @@ class NetworkInterfaces extends Page implements HasTable
             ->columns([
                 Tables\Columns\TextColumn::make('device.nama')
                     ->label('Perangkat')->searchable()->wrap(),
+                Tables\Columns\TextColumn::make('snmp_version')
+                    ->label('Versi SNMP')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string =>
+                        $state === '2c' ? 'v2c' : 'v3')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('interface_name')
                     ->label('Interface')->searchable()->wrap(),
                 Tables\Columns\TextColumn::make('device.ownerUnit.nama')
@@ -86,6 +93,9 @@ class NetworkInterfaces extends Page implements HasTable
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Port')->options(['up' => 'Up', 'down' => 'Down', 'unknown' => 'Tidak diketahui']),
+                Tables\Filters\SelectFilter::make('snmp_version')
+                    ->label('Versi SNMP')
+                    ->options(['3' => 'SNMPv3', '2c' => 'SNMPv2c']),
                 Tables\Filters\SelectFilter::make('unit_id')
                     ->label('Unit')
                     ->options(fn (): array => Unit::query()->orderBy('nama')->pluck('nama', 'id')->all())
@@ -109,12 +119,12 @@ class NetworkInterfaces extends Page implements HasTable
                     ->requiresConfirmation()
                     ->visible(fn (NetworkInterfaceSample $record): bool =>
                         (auth()->user()?->can('update_device') ?? false)
-                        && (bool) $record->device?->snmpProfile?->enabled)
+                        && SnmpProtocolPolicy::canPoll($record->device?->snmpProfile))
                     ->action(function (NetworkInterfaceSample $record): void {
                         abort_unless(static::canAccess()
                             && (auth()->user()?->can('update_device') ?? false), 403);
                         $deviceId = $record->device_id;
-                        if (! $deviceId || ! $record->device?->snmpProfile?->enabled) {
+                        if (! $deviceId || ! SnmpProtocolPolicy::canPoll($record->device?->snmpProfile)) {
                             return;
                         }
                         if (! Cache::add('network-quality:snmp:manual:'.$deviceId, now()->timestamp, 60)) {
