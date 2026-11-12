@@ -59,6 +59,11 @@ class NetworkQuality extends Page implements HasTable
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
+            Actions\Action::make('interfaces')
+                ->label('Traffic Interface')
+                ->icon('heroicon-o-chart-bar')
+                ->url(NetworkInterfaces::getUrl())
+                ->visible(fn (): bool => NetworkInterfaces::canAccess()),
             Actions\Action::make('targets')
                 ->label('Target Layanan')
                 ->icon('heroicon-o-adjustments-horizontal')
