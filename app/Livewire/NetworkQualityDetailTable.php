@@ -47,12 +47,18 @@ class NetworkQualityDetailTable extends Component implements HasForms, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(NetworkQualitySnapshot::query($this->quality)->with(['device.ownerUnit', 'target']))
+            ->query(NetworkQualitySnapshot::query($this->quality)->with(['device.ownerUnit', 'target', 'probeLocation']))
             ->columns([
                 Tables\Columns\TextColumn::make('target_name')
                     ->label('Target')->searchable()->wrap(),
                 Tables\Columns\TextColumn::make('device.ownerUnit.nama')
                     ->label('Unit')->placeholder('Layanan')->toggleable(),
+                Tables\Columns\TextColumn::make('probeLocation.name')
+                    ->label('Lokasi Probe')->placeholder('Server Utama')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('isp_name')
+                    ->label('ISP')->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('probe_type')
                     ->label('Metode')->badge(),
                 Tables\Columns\TextColumn::make('status')
