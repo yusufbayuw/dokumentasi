@@ -1,0 +1,27 @@
+{
+  "server_url": "https://dokumentasi.tarunabakti.or.id",
+  "location_id": 1,
+  "allowed_cidrs": [
+    "10.10.0.0/16"
+  ],
+  "allowed_domains": [
+    "internal.example.org"
+  ],
+  "samples": 3,
+  "timeout_seconds": 2,
+  "targets": [
+    {
+      "target_id": 1,
+      "probe_type": "icmp",
+      "address": "10.10.1.1",
+      "port": null
+    },
+    {
+      "target_id": 2,
+      "probe_type": "https",
+      "address": "https://internal.example.org/health",
+      "port": null,
+      "expected_status": 200
+    }
+  ]
+}
