@@ -2,10 +2,9 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\NetworkQualityMeasurement;
+use App\Services\NetworkQualitySnapshot;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 class NetworkQualityOverview extends BaseWidget
 {
@@ -19,33 +18,48 @@ class NetworkQualityOverview extends BaseWidget
 
     protected function getStats(): array
     {
-        $minutes = max(15, (int) config('network_quality.interval_minutes', 5) * 3);
-
-        $latestIds = DB::table('network_quality_measurements')
-            ->selectRaw('MAX(id)')
-            ->where('checked_at', '>=', now()->subMinutes($minutes))
-            ->groupBy('monitor_key');
-
-        $latest = NetworkQualityMeasurement::query()
-            ->whereIn('id', $latestIds)
-            ->get(['quality']);
+        $minutes = NetworkQualitySnapshot::windowMinutes();
+        $latest = NetworkQualitySnapshot::query()->get(['quality']);
 
         return [
             Stat::make('Target Diukur', number_format($latest->count()))
                 ->description('Hasil terbaru dalam ' . $minutes . ' menit')
-                ->icon('heroicon-o-signal'),
+                ->icon('heroicon-o-signal')
+                ->extraAttributes(self::detailAttributes('all', 'semua target')),
             Stat::make('Baik', number_format($latest->where('quality', 'good')->count()))
                 ->description('Koneksi normal menurut ambang awal')
-                ->color('success'),
+                ->color('success')
+                ->extraAttributes(self::detailAttributes('good', 'kualitas baik')),
             Stat::make('Menurun', number_format($latest->where('quality', 'degraded')->count()))
                 ->description('Perlu observasi')
-                ->color('warning'),
+                ->color('warning')
+                ->extraAttributes(self::detailAttributes('degraded', 'kualitas menurun')),
             Stat::make('Buruk', number_format($latest->where('quality', 'bad')->count()))
                 ->description('Perlu ditelusuri')
-                ->color('danger'),
+                ->color('danger')
+                ->extraAttributes(self::detailAttributes('bad', 'kualitas buruk')),
             Stat::make('Belum diketahui', number_format($latest->where('quality', 'unknown')->count()))
                 ->description('Periksa collector atau target')
-                ->color('gray'),
+                ->color('gray')
+                ->extraAttributes(self::detailAttributes('unknown', 'kualitas belum diketahui')),
+        ];
+    }
+    /**
+     * Filament 3 Stat::extraAttributes supports native Livewire event dispatch.
+     * Keyboard access is preserved for every interactive summary card.
+     */
+    private static function detailAttributes(string $quality, string $label): array
+    {
+        $dispatch = "\$dispatch('open-network-quality-details', { quality: '{$quality}' })";
+
+        return [
+            'class' => 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-xl',
+            'role' => 'button',
+            'tabindex' => '0',
+            'aria-label' => "Buka rincian {$label}",
+            'wire:click' => $dispatch,
+            'wire:keydown.enter' => $dispatch,
+            'wire:keydown.space.prevent' => $dispatch,
         ];
     }
 }
