@@ -82,7 +82,7 @@ class NetworkSnmpV2cTest extends TestCase
         $this->assertStringContainsString("'authPriv'", $transport);
         $this->assertStringNotContainsString('shell_exec(', $transport);
         $this->assertStringContainsString('SnmpProtocolPolicy::canPoll(', $poller);
-        $this->assertStringContainsString("'snmp_version' => $profile->version", $poller);
+        $this->assertStringContainsString("'snmp_version' => \$profile->version", $poller);
         $this->assertStringContainsString("network_quality.snmp.v2c_enabled", $dispatcher);
         $this->assertStringContainsString("->default('3')", $migration);
         $this->assertStringContainsString("where('version', '2c')->exists()", $migration);
