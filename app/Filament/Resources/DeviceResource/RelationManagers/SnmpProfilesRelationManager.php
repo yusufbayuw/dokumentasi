@@ -33,7 +33,7 @@ class SnmpProfilesRelationManager extends RelationManager
                     Forms\Components\Select::make('version')
                         ->label('Versi SNMP')
                         ->options(fn (?NetworkSnmpProfile $record): array =>
-                            config('network_quality.snmp.v2c_enabled', false) || $record?->version === '2c'
+                            (config('network_quality.snmp.v2c_enabled', false) || $record?->version === '2c')
                                 ? ['3' => 'SNMPv3 (disarankan)', '2c' => 'SNMPv2c (community)']
                                 : ['3' => 'SNMPv3 (disarankan)']
                         )
