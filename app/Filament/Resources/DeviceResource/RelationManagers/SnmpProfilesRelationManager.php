@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\DeviceResource\RelationManagers;
 
 use App\Models\NetworkSnmpProfile;
-use App\NetworkMonitoring\SnmpProtocolPolicy;
+use App\Rules\SnmpReadOnlyCommunity;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -51,11 +51,7 @@ class SnmpProfilesRelationManager extends RelationManager
                         ->required(fn (Forms\Get $get, string $operation, ?NetworkSnmpProfile $record): bool =>
                             $get('version') === '2c' && ($operation === 'create' || $record?->version !== '2c'))
                         ->minLength(8)->maxLength(128)
-                        ->rules([function (string $attribute, $value, \Closure $fail): void {
-                            if (filled($value) && ! SnmpProtocolPolicy::communityIsSafe((string) $value)) {
-                                $fail('Community harus 8–128 karakter, tanpa spasi awal/akhir atau karakter kontrol, dan bukan public/private.');
-                            }
-                        }])
+                        ->rules([new SnmpReadOnlyCommunity()])
                         ->afterStateHydrated(fn (Forms\Components\TextInput $component) => $component->state(null))
                         ->dehydrated(fn (Forms\Get $get, ?string $state): bool =>
                             $get('version') === '2c' && filled($state))
