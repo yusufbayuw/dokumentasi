@@ -49,6 +49,9 @@ class NetworkQualityWidgetDetailsTest extends TestCase
         $this->assertStringContainsString("can('view_any_device')", $code);
         $this->assertStringContainsString("Action::make('recommendation')", $code);
         $this->assertStringContainsString("Action::make('device')", $code);
+        $this->assertStringContainsString("Action::make('recheck')", $code);
+        $this->assertStringContainsString("can('update_device')", $code);
+        $this->assertStringContainsString("onQueue('network-quality')", $code);
         $this->assertStringContainsString("Action::make('target')", $code);
         $this->assertStringNotContainsString("DeleteAction::make(", $code);
         $this->assertStringNotContainsString("EditAction::make(", $code);

@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Filament\Resources\DeviceResource;
 use App\Filament\Resources\NetworkQualityTargetResource;
 use App\Models\NetworkQualityMeasurement;
+use App\Jobs\RunNetworkQuality;
 use App\Models\Unit;
 use App\Services\NetworkQualityAdvice;
 use App\Services\NetworkQualitySnapshot;
@@ -16,6 +17,8 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
+use Filament\Notifications\Notification;
 use Livewire\Component;
 
 class NetworkQualityDetailTable extends Component implements HasForms, HasTable
@@ -120,6 +123,47 @@ class NetworkQualityDetailTable extends Component implements HasForms, HasTable
                     ->modalWidth('xl')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup'),
+                Tables\Actions\Action::make('recheck')
+                    ->label('Uji Ulang')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Jadwalkan pengukuran ulang?')
+                    ->modalDescription('Pengujian dijalankan melalui queue network-quality, tanpa mengubah perangkat.')
+                    ->modalSubmitActionLabel('Jalankan Uji')
+                    ->visible(fn (NetworkQualityMeasurement $record): bool => (auth()->user()?->can('update_device') ?? false)
+                        && (
+                            ($record->device_id !== null && (bool) $record->device?->monitoring_enabled)
+                            || ($record->target_id !== null && (bool) $record->target?->enabled)
+                        ))
+                    ->action(function (NetworkQualityMeasurement $record): void {
+                        abort_unless(
+                            config('network_quality.enabled', false)
+                                && (auth()->user()?->can('update_device') ?? false),
+                            403,
+                        );
+
+                        $cacheKey = 'network-quality:manual:' . sha1($record->monitor_key);
+
+                        if (! Cache::add($cacheKey, now()->timestamp, 60)) {
+                            Notification::make()
+                                ->title('Pengukuran baru saja diminta')
+                                ->body('Coba kembali setelah satu menit.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        RunNetworkQuality::dispatch($record->device_id, $record->target_id)
+                            ->onQueue('network-quality');
+
+                        Notification::make()
+                            ->title('Pengukuran ulang diantrikan')
+                            ->body('Hasil akan muncul setelah worker selesai memproses.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('device')
                     ->label('Buka Perangkat')
                     ->icon('heroicon-o-computer-desktop')
