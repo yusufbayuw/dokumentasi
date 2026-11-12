@@ -18,6 +18,12 @@ class QualityClassifier
             return 'unknown';
         }
 
+        if (($result['latency_ms'] ?? null) === null
+            && ($result['packet_loss_pct'] ?? null) === null
+            && ($result['rtt_variation_ms'] ?? null) === null) {
+            return 'unknown';
+        }
+
         $limits = config('network_quality.quality', []);
         $loss = $result['packet_loss_pct'] ?? null;
         $latency = $result['latency_ms'] ?? null;
