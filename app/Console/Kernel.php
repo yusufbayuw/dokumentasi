@@ -4,6 +4,8 @@ namespace App\Console;
 
 use App\Jobs\PingIpAddress;
 use App\Jobs\DispatchNetworkQuality;
+use App\Jobs\AnalyzeNetworkIncidents;
+use App\Jobs\BuildNetworkSlaDaily;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\RestartFingerprintDevice;
 use App\Support\FingerprintQueue;
@@ -39,6 +41,22 @@ class Kernel extends ConsoleKernel
             ->name('monitor-network-quality')
             ->withoutOverlapping(5)
             ->when(fn (): bool => (bool) config('network_quality.enabled', false));
+
+        // Phase 6: incident evaluation and observed availability aggregation.
+        // Both are opt-in and run through the existing network-quality worker.
+        $schedule->job(new AnalyzeNetworkIncidents(), 'network-quality')
+            ->everyFiveMinutes()
+            ->name('analyze-network-incidents')
+            ->withoutOverlapping(10)
+            ->when(fn (): bool => (bool) config('network_quality.enabled', false)
+                && (bool) config('network_quality.incidents.enabled', false));
+
+        $schedule->job(new BuildNetworkSlaDaily(), 'network-quality')
+            ->hourly()
+            ->name('build-network-sla-observed')
+            ->withoutOverlapping(30)
+            ->when(fn (): bool => (bool) config('network_quality.enabled', false)
+                && (bool) config('network_quality.incidents.enabled', false));
 
         $schedule->call(function (): void {
             $days = max(7, (int) config('network_quality.retention_days', 14));

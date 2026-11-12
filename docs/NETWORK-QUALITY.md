@@ -83,3 +83,42 @@ connectivity, HTTPS status checks, an operational dashboard and service targets.
   memperbarui diri setiap 15 detik selama terbuka.
 - Aksi **Buka Perangkat** dan **Target Layanan** hanya tampil sesuai
   hak akses dan tipe target. Tidak ada migrasi, cron, atau worker baru.
+
+
+## Phase 6: incident correlation, observed availability and optional alerts
+
+- This phase is off by default via NETWORK_QUALITY_INCIDENTS_ENABLED=false
+  even if the original Network Quality feature is active. Existing ICMP,
+  device health, fingerprint and SNMP traffic collection remain unchanged.
+- Run additive DB migration after backup and use the existing
+  network-quality worker and Laravel Scheduler; no new server-side queue
+  worker or Cron entry is necessary.
+- When enabled, a five-minute analysis looks at up to 500 recent monitor
+  keys (configurable). Default three consecutive down, bad or collector-error
+  samples open an incident. Two consecutive good/up samples resolve one.
+  Single-sample spikes do not open incidents. Unavailable collector is
+  classified separately (not automatically a network outage).
+- Filament **Infrastruktur > Insiden Jaringan** supports status/severity
+  filters, contextual topology/probe hints, read-only audit history and
+  permission-checked acknowledgment/manual resolution. Changes are logged
+  in network_incident_events. Manual closure is re-opened if repeated
+  poor measurements recur.
+- Correlation checks CMDB neighbor connections or independent probe
+  monitor keys for the same target; these are hints, not verified root cause.
+  No device configuration is changed automatically.
+- Hourly aggregation of current and previous day creates
+  network_sla_daily. Filament **Laporan Ketersediaan** shows a
+  date-filtered table and XLSX bulk export. Observed availability is
+  up/(up+down) samples; collector errors are excluded. This is NOT
+  elapsed-time uptime, guaranteed service availability, or contract SLA.
+- Optional notification emails are OFF by default. To enable, configure
+  NETWORK_QUALITY_ALERTS_ENABLED=true and comma-separated recipient
+  addresses in NETWORK_QUALITY_ALERT_EMAILS plus the existing Laravel
+  mailer. The default queue worker processes notifications. Messages are
+  sent on opening, reopening or escalation, not on every poll.
+- For rollout, start with alert emails disabled and validate multiple
+  consecutive samples before turning on external notifications. Inspect
+  the queue failed-jobs report and mail configuration first.
+- To roll back, disable NETWORK_QUALITY_INCIDENTS_ENABLED, rebuild
+  Laravel configuration cache and restart queue workers. Do not drop
+  audit/reporting tables without separately deciding data retention.

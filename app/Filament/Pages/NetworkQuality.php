@@ -59,6 +59,16 @@ class NetworkQuality extends Page implements HasTable
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
+            Actions\Action::make('incidents')
+                ->label('Insiden Jaringan')
+                ->icon('heroicon-o-exclamation-triangle')
+                ->url(\App\Filament\Resources\NetworkIncidentResource::getUrl('index'))
+                ->visible(fn (): bool => \App\Filament\Resources\NetworkIncidentResource::canViewAny()),
+            Actions\Action::make('sla')
+                ->label('Laporan Ketersediaan')
+                ->icon('heroicon-o-document-chart-bar')
+                ->url(NetworkSlaReport::getUrl())
+                ->visible(fn (): bool => NetworkSlaReport::canAccess()),
             Actions\Action::make('targets')
                 ->label('Target Layanan')
                 ->icon('heroicon-o-adjustments-horizontal')
