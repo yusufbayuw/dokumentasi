@@ -2,7 +2,12 @@
 
 namespace App\Filament\Resources\DeviceResource\RelationManagers;
 
+use App\Filament\Pages\NetworkSnmpData;
+use App\Jobs\StartDeviceSnmpSnapshot;
 use App\Models\NetworkSnmpProfile;
+use App\NetworkMonitoring\SnmpProtocolPolicy;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Cache;
 use App\Rules\SnmpReadOnlyCommunity;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -125,6 +130,14 @@ class SnmpProfilesRelationManager extends RelationManager
                     ->getStateUsing(fn (NetworkSnmpProfile $record): string =>
                         $record->version === '3' ? 'AES / authPriv' : 'Tidak terenkripsi'),
                 Tables\Columns\IconColumn::make('enabled')->label('Aktif')->boolean(),
+                Tables\Columns\TextColumn::make('last_sample_count')
+                    ->label('OID Terakhir')->numeric(),
+                Tables\Columns\TextColumn::make('last_poll_error')
+                    ->label('Diagnostik')->placeholder('Belum ada')->wrap()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('last_polled_at')
+                    ->label('Pengambilan Terakhir')->dateTime('d/m/Y H:i')
+                    ->placeholder('Belum ada'),
                 Tables\Columns\TextColumn::make('updated_at')->label('Diperbarui')->dateTime('d/m/Y H:i'),
             ])
             ->headerActions([
@@ -136,9 +149,41 @@ class SnmpProfilesRelationManager extends RelationManager
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->visible(fn (): bool => auth()->user()?->can('update_device') ?? false),
+                Tables\Actions\Action::make('capture')
+                    ->label('Ambil Data SNMP')
+                    ->icon('heroicon-o-arrow-path')
+                    ->requiresConfirmation()
+                    ->visible(fn (NetworkSnmpProfile $record): bool =>
+                        SnmpProtocolPolicy::canPoll($record)
+                        && (bool) $this->getOwnerRecord()->monitoring_enabled
+                        && (auth()->user()?->can('update_device') ?? false))
+                    ->action(function (NetworkSnmpProfile $record): void {
+                        abort_unless(NetworkSnmpData::canAccess(), 403);
+
+                        if (! SnmpProtocolPolicy::canPoll($record)
+                            || ! $this->getOwnerRecord()->monitoring_enabled) {
+                            return;
+                        }
+
+                        $key = 'network-quality:snmp:manual:snapshot:'.$record->device_id;
+                        if (! Cache::add($key, now()->timestamp, 60)) {
+                            Notification::make()->title('Pengambilan sudah diminta')->warning()->send();
+                            return;
+                        }
+
+                        StartDeviceSnmpSnapshot::dispatch($record->device_id)
+                            ->onQueue('network-quality');
+                        Notification::make()->title('Pengambilan OID diantrikan')->success()->send();
+                    }),
+                Tables\Actions\Action::make('data')
+                    ->label('Lihat Data')
+                    ->icon('heroicon-o-table-cells')
+                    ->url(NetworkSnmpData::getUrl())
+                    ->openUrlInNewTab()
+                    ->visible(fn (): bool => NetworkSnmpData::canAccess()),
             ])
             ->bulkActions([])
             ->emptyStateHeading('SNMP belum dikonfigurasi')
-            ->emptyStateDescription('Monitoring interface bersifat opsional; konfigurasi satu profil per perangkat.');
+            ->emptyStateDescription('Satu profil per perangkat; semua OID yang diizinkan SNMP akan dikumpulkan menjadi snapshot tanpa input interface manual.');
     }
 }

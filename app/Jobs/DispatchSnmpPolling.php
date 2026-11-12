@@ -25,7 +25,7 @@ class DispatchSnmpPolling implements ShouldQueue
         }
 
         $limit = (int) config('network_quality.snmp.max_devices_per_cycle', 10);
-        $interval = (int) config('network_quality.snmp.interval_minutes', 5);
+        $interval = (int) config('network_quality.snmp.snapshot_interval_minutes', 60);
         $sent = 0;
 
         NetworkSnmpProfile::query()
@@ -41,10 +41,10 @@ class DispatchSnmpPolling implements ShouldQueue
                         break;
                     }
 
-                    $key = 'network-quality:snmp:due:' . $profile->device_id;
+                    $key = 'network-quality:snmp:snapshot:due:' . $profile->device_id;
 
                     if (Cache::add($key, now()->timestamp, max(45, $interval * 60))) {
-                        PollDeviceSnmp::dispatch($profile->device_id)->onQueue('network-quality');
+                        StartDeviceSnmpSnapshot::dispatch($profile->device_id)->onQueue('network-quality');
                         $sent++;
                     }
                 }

@@ -77,6 +77,11 @@ class Device extends Model
             ->latestOfMany();
     }
 
+    public function snmpSnapshots(): HasMany
+    {
+        return $this->hasMany(NetworkSnmpSnapshot::class);
+    }
+
     public function snmpProfile(): HasOne
     {
         return $this->hasOne(NetworkSnmpProfile::class);

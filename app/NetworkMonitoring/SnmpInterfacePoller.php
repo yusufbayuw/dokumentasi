@@ -7,6 +7,7 @@ use App\Models\DeviceInterface;
 use App\Models\NetworkInterfaceSample;
 use App\Models\NetworkSnmpProfile;
 use App\NetworkMonitoring\SnmpProtocolPolicy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Throwable;
 
@@ -25,6 +26,7 @@ class SnmpInterfacePoller
         private NativeSnmpTransport $transport,
         private InterfaceCounterCalculator $calculator,
         private TargetGuard $guard,
+        private SnmpInterfaceSelection $selection,
     ) {
     }
 
@@ -46,29 +48,76 @@ class SnmpInterfacePoller
 
         $host = $device->ip?->nama ?? $device->managementInterface?->ipAddress?->nama;
         if (! $host || ! $this->guard->allows('icmp', $host)) {
-            return; // Same explicit allowed CIDRs used by the ICMP collector.
+            $this->remember($profile, 'snmp_host_not_allowed', 0, 0);
+            return;
         }
 
-        // Map existing CMDB interfaces automatically by a unique exact ifName
-        // match. Never auto-create, delete or reassign unrelated interfaces.
-        if ($this->transport->available()
-            && $device->interfaces()->whereNull('snmp_if_index')->exists()) {
+        if (! $this->transport->available()) {
+            $this->remember($profile, 'snmp_extension_missing', 0, 0);
+            return;
+        }
+
+        // SNMP discovery is independent from inventory: unmatched ports are
+        // sampled without creating or changing any CMDB interface record.
+        $discovered = [];
+        try {
+            $discovered = $this->transport->interfaceNames($profile, $host);
+        } catch (Throwable) {
+            // Explicitly configured ifIndex ports remain eligible.
+        }
+
+        if ($discovered !== [] && $device->interfaces()->whereNull('snmp_if_index')->exists()) {
             try {
-                $this->mapExistingInterfaces($device, $this->transport->interfaceNames($profile, $host));
+                $this->mapExistingInterfaces($device, $discovered);
             } catch (Throwable) {
-                // Optional discovery can fail on devices without IF-MIB support.
+                // A mapping conflict must not prevent read-only telemetry.
             }
         }
 
-        $interfaces = $device->interfaces()
+        $configured = $device->interfaces()
             ->whereNotNull('snmp_if_index')
             ->orderBy('id')
-            ->limit((int) config('network_quality.snmp.max_interfaces_per_device', 16))
             ->get();
 
-        foreach ($interfaces->chunk(6) as $batch) {
-            $this->pollBatch($device, $profile, $host, $batch);
+        $interfaces = $this->selection->select(
+            $device->id,
+            $configured,
+            $discovered,
+            (int) config('network_quality.snmp.max_interfaces_per_device', 16),
+        );
+
+        if ($interfaces->isEmpty()) {
+            $this->remember($profile, 'snmp_no_interfaces', 0, count($discovered));
+            return;
         }
+
+        $success = 0;
+        foreach ($interfaces->chunk(6) as $batch) {
+            $success += $this->pollBatch($device, $profile, $host, $batch);
+        }
+
+        $this->remember(
+            $profile,
+            $success > 0 ? null : 'snmp_read_failed',
+            $interfaces->count(),
+            count($discovered),
+        );
+    }
+
+    private function remember(
+        NetworkSnmpProfile $profile,
+        ?string $errorCode,
+        int $samples,
+        int $discovered,
+    ): void {
+        // Update only operational metadata, without touching or re-encrypting
+        // credentials. No community/password is stored in diagnostic fields.
+        DB::table('network_snmp_profiles')->where('id', $profile->id)->update([
+            'last_polled_at' => now(),
+            'last_poll_error' => $errorCode,
+            'last_sample_count' => $samples,
+            'last_discovered_count' => $discovered,
+        ]);
     }
 
     /** @param array<int,string> $names */
@@ -110,7 +159,7 @@ class SnmpInterfacePoller
         NetworkSnmpProfile $profile,
         string $host,
         Collection $batch,
-    ): void {
+    ): int {
         $oids = [];
         foreach ($batch as $interface) {
             foreach (self::OIDS as $prefix) {
@@ -127,9 +176,10 @@ class SnmpInterfacePoller
                     : 'snmp_extension_missing');
             }
 
-            return;
+            return 0;
         }
 
+        $success = 0;
         foreach ($batch as $interface) {
             $index = (int) $interface->snmp_if_index;
             $result = [];
@@ -152,7 +202,7 @@ class SnmpInterfacePoller
 
             $previous = NetworkInterfaceSample::query()
                 ->where('snmp_version', $profile->version)
-                ->where('device_interface_id', $interface->id)
+                ->where('device_id', $device->id)
                 ->where('snmp_if_index', $index)
                 ->orderByDesc('checked_at')
                 ->orderByDesc('id')
@@ -161,6 +211,10 @@ class SnmpInterfacePoller
             $delta = $status === 'up' && $error === null
                 ? $this->calculator->calculate($previous, $result, $checkedAt, $speed)
                 : $this->calculator->calculate(null, [], $checkedAt);
+
+            if ($error === null) {
+                $success++;
+            }
 
             NetworkInterfaceSample::create([
                 'device_id' => $device->id,
@@ -182,6 +236,8 @@ class SnmpInterfacePoller
                 'checked_at' => $checkedAt,
             ]);
         }
+
+        return $success;
     }
 
     private function unknown(Device $device, DeviceInterface $interface, string $code): void

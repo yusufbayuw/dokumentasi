@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class NetworkSnmpProfile extends Model
 {
@@ -21,6 +23,7 @@ class NetworkSnmpProfile extends Model
         'auth_passphrase' => 'encrypted',
         'privacy_passphrase' => 'encrypted',
         'enabled' => 'boolean',
+        'last_polled_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -37,6 +40,16 @@ class NetworkSnmpProfile extends Model
                 $profile->community = null;
             }
         });
+    }
+
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(NetworkSnmpSnapshot::class, 'network_snmp_profile_id');
+    }
+
+    public function latestSnapshot(): HasOne
+    {
+        return $this->hasOne(NetworkSnmpSnapshot::class, 'network_snmp_profile_id')->latestOfMany();
     }
 
     public function device(): BelongsTo

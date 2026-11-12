@@ -3,11 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\DeviceResource;
-use App\Jobs\PollDeviceSnmp;
 use App\Models\NetworkInterfaceSample;
 use App\Models\Unit;
-use App\NetworkMonitoring\SnmpProtocolPolicy;
-use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Contracts\HasTable;
@@ -15,7 +12,6 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class NetworkInterfaces extends Page implements HasTable
@@ -24,10 +20,17 @@ class NetworkInterfaces extends Page implements HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
     protected static ?string $navigationGroup = 'Infrastruktur';
-    protected static ?string $navigationLabel = 'Traffic Interface';
+    protected static ?string $navigationLabel = 'Traffic Interface (historis)';
     protected static ?int $navigationSort = 7;
     protected static ?string $title = 'Traffic & Error Interface (SNMPv3 / v2c)';
     protected static string $view = 'filament.pages.network-interfaces';
+
+    // Per-device full OID snapshots are now the primary SNMP collection.
+    // Keep this historical derived-metrics page accessible to existing links.
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function canAccess(): bool
     {
@@ -114,26 +117,6 @@ class NetworkInterfaces extends Page implements HasTable
                     ]))
                     ->modalSubmitAction(false)->modalWidth('7xl')
                     ->modalCancelActionLabel('Tutup'),
-                Tables\Actions\Action::make('recheck')
-                    ->label('Uji SNMP')->icon('heroicon-o-arrow-path')
-                    ->requiresConfirmation()
-                    ->visible(fn (NetworkInterfaceSample $record): bool =>
-                        (auth()->user()?->can('update_device') ?? false)
-                        && SnmpProtocolPolicy::canPoll($record->device?->snmpProfile))
-                    ->action(function (NetworkInterfaceSample $record): void {
-                        abort_unless(static::canAccess()
-                            && (auth()->user()?->can('update_device') ?? false), 403);
-                        $deviceId = $record->device_id;
-                        if (! $deviceId || ! SnmpProtocolPolicy::canPoll($record->device?->snmpProfile)) {
-                            return;
-                        }
-                        if (! Cache::add('network-quality:snmp:manual:'.$deviceId, now()->timestamp, 60)) {
-                            Notification::make()->title('Baru saja dijadwalkan')->warning()->send();
-                            return;
-                        }
-                        PollDeviceSnmp::dispatch($deviceId)->onQueue('network-quality');
-                        Notification::make()->title('Uji SNMP diantrikan')->success()->send();
-                    }),
                 Tables\Actions\Action::make('device')
                     ->label('Buka Perangkat')->icon('heroicon-o-computer-desktop')
                     ->url(fn (NetworkInterfaceSample $record): string => DeviceResource::getUrl('edit', ['record' => $record->device_id]))
@@ -144,6 +127,6 @@ class NetworkInterfaces extends Page implements HasTable
             ->defaultSort('checked_at', 'desc')
             ->paginated([10, 25, 50])
             ->emptyStateHeading('Belum ada hasil interface')
-            ->emptyStateDescription('Periksa fitur SNMP, profil per perangkat, SNMP ifIndex, ekstensi PHP SNMP, dan worker network-quality.');
+            ->emptyStateDescription('Metrik interface terolah merupakan tampilan historis. Data SNMP lengkap sekarang tersedia di Infrastruktur > Data SNMP Perangkat.');
     }
 }

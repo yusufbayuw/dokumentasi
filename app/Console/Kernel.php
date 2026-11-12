@@ -72,11 +72,20 @@ class Kernel extends ConsoleKernel
                 ->where('checked_at', '<', now()->subDays($days))
                 ->delete();
 
-            // Retain new SNMP samples on the same bounded history window.
+            // Retain historical interface metrics (legacy view) as before.
             if (config('network_quality.snmp.enabled', false)) {
                 DB::table('network_interface_samples')
                     ->where('checked_at', '<', now()->subDays($days))
                     ->delete();
+
+                // Raw snapshots are much larger; own conservative retention.
+                // Cascade deletes encrypted OID values without exporting them.
+                $snapshotDays = (int) config('network_quality.snmp.snapshot_retention_days', 3);
+                \App\Models\NetworkSnmpSnapshot::query()
+                    ->where('status', '!=', 'running')
+                    ->where('started_at', '<', now()->subDays($snapshotDays))
+                    ->orderBy('id')->limit(100)->get(['id'])
+                    ->each(fn ($snapshot) => $snapshot->delete());
             }
         })
             ->name('prune-network-quality')

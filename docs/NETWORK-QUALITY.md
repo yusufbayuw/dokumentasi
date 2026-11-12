@@ -304,3 +304,84 @@ the database and must be entered again if switching back.
    Monitoring enabled and a permitted management IP.
 5. Check **Infrastruktur > Traffic Interface**; v2c rows are labeled
    separately and include port status, RX/TX, error deltas and history.
+
+
+## Data SNMP Per Perangkat - raw snapshot capture
+
+SNMP credentials and data belong to each individual CMDB device. The primary
+collector now gathers accessible SNMP OIDs from that device and saves historical
+snapshots. Port/interface traffic processing is not required and is not
+auto-generated from the raw data. The old Traffic Interface view is retained
+as historical reference; its legacy polling job is OFF by default.
+
+### How it works
+
+- Configure SNMPv3 (preferred) or SNMPv2c (read-only community) in
+  Infrastruktur > Perangkat > Edit > Monitoring SNMP. Keep Monitoring
+  Perangkat and Aktifkan Polling SNMP enabled. Ensure its management IPv4
+  address is allowed by NETWORK_QUALITY_ALLOWED_CIDRS.
+- Open Infrastruktur > Data SNMP Perangkat to see each configured device,
+  snapshot status, OID count, time and diagnostic. Use Ambil Semua OID (or
+  Ambil Data SNMP in the device tab) to request a manual collection.
+  Lihat OID browses raw OID, type, encoding and values using a searchable
+  paginated native Filament table. Riwayat Snapshot opens older captures.
+- The scheduler collects a snapshot every 60 minutes by default via the
+  existing network-quality queue, without needing interface CMDB records.
+  Each continuation job issues a bounded number of read-only SNMP GETNEXT.
+- The default root is 1.3.6.1, encompassing standard Internet and vendor
+  MIB branches, insofar as allowed by the remote device's SNMP view.
+- Values are stored with their numeric OID, SNMP type number, raw content,
+  encoding, byte size and truncated marker. Storage is encrypted with the
+  existing Laravel APP_KEY. Neither OID data nor credentials are written to
+  public files, CLI arguments or logs.
+- Viewing raw OID data requires BOTH view_any_device and update_device
+  privileges. Snapshot collection does not mutate device configuration or
+  create/change CMDB interfaces.
+- Snapshot status:
+  * running: capture is ongoing
+  * complete: all accessible OIDs under configured roots traversed safely
+  * partial: OID/size/time bounds or polling problem interrupted collection
+  * failed: no usable data obtained
+  'Complete' does not imply manufacturer-hidden, unauthorised or non-SNMP
+  device properties have been retrieved.
+
+### Production rollout - aaPanel with PHP 8.1
+
+1. Back up database. Deploy the code and run additive migrations (profile
+   diagnostic fields and new snapshot/OID tables) as www using the PHP 8.1
+   CLI, then rebuild config cache and restart network-quality worker.
+2. Confirm the same worker binary has PHP SNMP:
+   /www/server/php/81/bin/php -m | grep -i snmp
+3. Use these conservative starting values:
+
+   NETWORK_QUALITY_ENABLED=true
+   NETWORK_QUALITY_SNMP_ENABLED=true
+   NETWORK_QUALITY_SNMP_V2C_ENABLED=true
+   NETWORK_QUALITY_SNMP_SNAPSHOT_INTERVAL_MINUTES=60
+   NETWORK_QUALITY_SNMP_SNAPSHOT_ROOTS=1.3.6.1
+   NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_OIDS=20000
+   NETWORK_QUALITY_SNMP_SNAPSHOT_CHUNK_OIDS=30
+   NETWORK_QUALITY_SNMP_SNAPSHOT_CHUNK_SECONDS=15
+   NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_MINUTES=90
+   NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_VALUE_BYTES=8192
+   NETWORK_QUALITY_SNMP_SNAPSHOT_RETENTION_DAYS=3
+   NETWORK_QUALITY_SNMP_LEGACY_INTERFACE_METRICS=false
+
+4. Run one capture against a single registered device and check its status
+   and OID count before enabling large batches.
+
+### Safety and limits
+
+SNMP may expose routing tables, ARP/MAC mappings, usernames and other
+sensitive device information. Restrict raw viewing to trusted operators,
+use a read-only remote SNMP view and a management VLAN. SNMPv2c community
+text is not encrypted on the wire.
+
+The default maximum is 20,000 OIDs and 8,192 bytes for each value, at
+most 90 minutes per snapshot, with three days of retention. A partial
+snapshot EXPLICITLY means the available capture was incomplete.
+Larger limits are configurable but may increase network/device load,
+database storage, queue processing time and retention costs. Old
+snapshots and their encrypted OIDs are deleted together by retention.
+To stop collection, set NETWORK_QUALITY_SNMP_ENABLED=false, refresh
+config cache and restart the worker.
