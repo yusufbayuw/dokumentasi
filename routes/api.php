@@ -23,3 +23,12 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // not the interactive Laravel/Filament session.
 Route::post('/nac/radius/authorize', \App\Http\Controllers\Api\NacRadiusAuthorizationController::class)
     ->middleware(\App\Http\Middleware\AuthenticateNacRadius::class);
+
+
+// Remote probe reports are authenticated with a per-location secret, not
+// interactive Filament sessions. The feature is independently opt-in.
+Route::post('/network-quality/probe-results', \App\Http\Controllers\Api\NetworkProbeReportController::class)
+    ->middleware([
+        'throttle:30,1',
+        \App\Http\Middleware\AuthenticateNetworkProbe::class,
+    ]);
