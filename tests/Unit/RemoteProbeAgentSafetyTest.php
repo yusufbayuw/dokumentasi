@@ -15,7 +15,7 @@ class RemoteProbeAgentSafetyTest extends TestCase
         $this->assertStringContainsString('ssl.create_default_context()', $content);
         $this->assertStringContainsString('NoRedirect', $content);
         $this->assertStringContainsString('NQ_PROBE_TOKEN', $content);
-        $this->assertNotContains('shell=True', [$content]);
+        $this->assertStringNotContainsString('shell=True', $content);
         $this->assertStringContainsString('subprocess.run(', $content);
         $this->assertFileExists(base_path('scripts/network_probe_agent.example.json'));
     }

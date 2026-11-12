@@ -208,7 +208,10 @@ def send_report(base_url: str, token: str, payload: dict) -> None:
         },
     )
 
-    with urllib.request.urlopen(req, timeout=12, context=ssl.create_default_context()) as response:
+    reporter = urllib.request.build_opener(
+        NoRedirect(), urllib.request.HTTPSHandler(context=ssl.create_default_context())
+    )
+    with reporter.open(req, timeout=12) as response:
         if response.status not in (200, 202):
             raise RuntimeError("Report not accepted by central server.")
 
