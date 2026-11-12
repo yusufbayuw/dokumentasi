@@ -70,11 +70,11 @@ class NetworkQuality extends Page implements HasTable
                 ->icon('heroicon-o-chart-pie')
                 ->url(NetworkIspQuality::getUrl())
                 ->visible(fn (): bool => NetworkIspQuality::canAccess()),
-            Actions\Action::make('interfaces')
-                ->label('Traffic Interface')
-                ->icon('heroicon-o-chart-bar')
-                ->url(NetworkInterfaces::getUrl())
-                ->visible(fn (): bool => NetworkInterfaces::canAccess()),
+            Actions\Action::make('snmpData')
+                ->label('Data SNMP Perangkat')
+                ->icon('heroicon-o-server-stack')
+                ->url(NetworkSnmpData::getUrl())
+                ->visible(fn (): bool => NetworkSnmpData::canAccess()),
             Actions\Action::make('incidents')
                 ->label('Insiden Jaringan')
                 ->icon('heroicon-o-exclamation-triangle')

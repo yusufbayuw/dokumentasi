@@ -24,10 +24,17 @@ class NetworkInterfaces extends Page implements HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
     protected static ?string $navigationGroup = 'Infrastruktur';
-    protected static ?string $navigationLabel = 'Traffic Interface';
+    protected static ?string $navigationLabel = 'Traffic Interface (historis)';
     protected static ?int $navigationSort = 7;
     protected static ?string $title = 'Traffic & Error Interface (SNMPv3 / v2c)';
     protected static string $view = 'filament.pages.network-interfaces';
+
+    // Per-device full OID snapshots are now the primary SNMP collection.
+    // Keep this historical derived-metrics page accessible to existing links.
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
 
     public static function canAccess(): bool
     {
@@ -144,6 +151,6 @@ class NetworkInterfaces extends Page implements HasTable
             ->defaultSort('checked_at', 'desc')
             ->paginated([10, 25, 50])
             ->emptyStateHeading('Belum ada hasil interface')
-            ->emptyStateDescription('Periksa fitur SNMP, profil per perangkat, SNMP ifIndex, ekstensi PHP SNMP, dan worker network-quality.');
+            ->emptyStateDescription('Metrik interface terolah merupakan tampilan historis. Data SNMP lengkap sekarang tersedia di Infrastruktur > Data SNMP Perangkat.');
     }
 }
