@@ -5,7 +5,7 @@ namespace Tests\Unit;
 use App\Models\NetworkInterfaceSample;
 use App\NetworkMonitoring\InterfaceCounterCalculator;
 use Carbon\Carbon;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class NetworkInterfaceCounterCalculatorTest extends TestCase
 {
