@@ -96,6 +96,102 @@ class NativeSnmpTransport
         }
     }
 
+    /**
+     * Bounded GETNEXT page for an SNMP OID snapshot.
+     *
+     * @return array{rows:list<array{oid:string,value:string,type:?int,encoding:string,raw_bytes:int,truncated:bool}>,cursor:string,finished:bool,error:?string}
+     */
+    public function nextSnapshotSegment(
+        NetworkSnmpProfile $profile,
+        string $host,
+        string $root,
+        string $cursor,
+        int $limit,
+        int $maxSeconds,
+        int $maxValueBytes,
+    ): array {
+        $root = SnmpOidCursor::normalize($root);
+        $cursor = SnmpOidCursor::normalize($cursor);
+        if ($root === null || $cursor === null
+            || ! SnmpOidCursor::within($cursor, $root)
+            || ! SnmpOidCursor::within($root, '1.3.6.1')) {
+            throw new RuntimeException('snmp_invalid_oid_root');
+        }
+
+        $limit = max(1, min(100, $limit));
+        $maxSeconds = max(3, min(30, $maxSeconds));
+        $maxValueBytes = max(512, min(65536, $maxValueBytes));
+
+        $session = $this->session($profile, $host);
+        try {
+            $session->valueretrieval = SNMP_VALUE_OBJECT;
+            $session->oid_output_format = SNMP_OID_OUTPUT_NUMERIC;
+            $rows = [];
+            $deadline = microtime(true) + $maxSeconds;
+
+            while (count($rows) < $limit && microtime(true) < $deadline) {
+                try {
+                    // Array argument returns the NEXT numeric OID as a key.
+                    // Unlike walk(), this keeps memory bounded for large MIBs.
+                    $reply = @$session->getnext(['.'.$cursor]);
+                } catch (\Throwable) {
+                    return compact('rows', 'cursor') + [
+                        'finished' => false, 'error' => 'snmp_getnext_failed',
+                    ];
+                }
+
+                if (! is_array($reply) || count($reply) !== 1) {
+                    return compact('rows', 'cursor') + [
+                        'finished' => false, 'error' => 'snmp_getnext_failed',
+                    ];
+                }
+
+                $oid = SnmpOidCursor::normalize((string) array_key_first($reply));
+                if ($oid === null || ! SnmpOidCursor::greaterThan($oid, $cursor)) {
+                    return compact('rows', 'cursor') + [
+                        'finished' => false, 'error' => 'snmp_invalid_oid_sequence',
+                    ];
+                }
+
+                if (! SnmpOidCursor::within($oid, $root)) {
+                    return compact('rows', 'cursor') + [
+                        'finished' => true, 'error' => null,
+                    ];
+                }
+
+                $raw = reset($reply);
+                $value = is_object($raw) && property_exists($raw, 'value')
+                    ? (string) $raw->value : (string) $raw;
+                $type = is_object($raw) && property_exists($raw, 'type')
+                    ? (int) $raw->type : null;
+
+                $rawBytes = strlen($value);
+                $truncated = $rawBytes > $maxValueBytes;
+                if ($truncated) {
+                    $value = substr($value, 0, $maxValueBytes);
+                }
+
+                $encoding = preg_match('//u', $value) === 1 ? 'utf8' : 'base64';
+
+                $rows[] = [
+                    'oid' => $oid,
+                    'value' => $encoding === 'base64' ? base64_encode($value) : $value,
+                    'type' => $type,
+                    'encoding' => $encoding,
+                    'raw_bytes' => $rawBytes,
+                    'truncated' => $truncated,
+                ];
+                $cursor = $oid;
+            }
+
+            return compact('rows', 'cursor') + [
+                'finished' => false, 'error' => null,
+            ];
+        } finally {
+            $session->close();
+        }
+    }
+
     private function session(NetworkSnmpProfile $profile, string $host): SNMP
     {
         if (! $this->available()) {
