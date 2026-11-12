@@ -6,6 +6,7 @@ use App\Filament\Resources\DeviceResource\Pages;
 use App\Filament\Resources\DeviceResource\RelationManagers\InterfacesRelationManager;
 use App\Filament\Resources\DeviceResource\RelationManagers\MaintenancesRelationManager;
 use App\Filament\Resources\DeviceResource\RelationManagers\MonitoringChecksRelationManager;
+use App\Filament\Resources\DeviceResource\RelationManagers\QualityMeasurementsRelationManager;
 use App\Filament\Resources\DeviceResource\RelationManagers\MovementsRelationManager;
 use App\Jobs\RestartFingerprintDevice;
 use App\Support\FingerprintDevice;
@@ -374,6 +375,7 @@ class DeviceResource extends Resource
         return [
             InterfacesRelationManager::class,
             MonitoringChecksRelationManager::class,
+            ... (config('network_quality.enabled', false) ? [QualityMeasurementsRelationManager::class] : []),
             MaintenancesRelationManager::class,
             MovementsRelationManager::class,
         ];
