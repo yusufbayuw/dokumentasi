@@ -32,4 +32,8 @@ class NetworkQualityMeasurement extends Model
     {
         return $this->belongsTo(NetworkQualityTarget::class);
     }
+    public function probeLocation(): BelongsTo
+    {
+        return $this->belongsTo(NetworkProbeLocation::class);
+    }
 }
