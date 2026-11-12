@@ -117,7 +117,7 @@ class NativeSnmpTransport
         // Use bounded GETBULK for SNMPv2c first. SwOS switches can respond
         // to sysDescr GETNEXT but fail the following GETNEXT request.
         // SNMPv3 continues using the existing authenticated native path.
-        $bulkFailed = false;
+        $bulkFailureCode = null;
 
         if ($profile->version === '2c'
             && (bool) config('network_quality.snmp.v2c_bulk_enabled', true)
@@ -127,10 +127,16 @@ class NativeSnmpTransport
                     $profile, $host, $root, $cursor,
                     $limit, $maxSeconds, $maxValueBytes
                 );
-            } catch (\Throwable) {
-                // Fall back to native GETNEXT on devices that do not implement
-                // GETBULK. Never log plaintext community / response content.
-                $bulkFailed = true;
+            } catch (\Throwable $exception) {
+                // Fall back to native GETNEXT. Keep a sanitized failure code
+                // if both methods fail; never expose community or raw packets.
+                $reported = $exception->getMessage();
+                $bulkFailureCode = in_array($reported, [
+                    'snmp_bulk_timeout', 'snmp_bulk_agent_error',
+                    'snmp_bulk_unavailable_oid', 'snmp_bulk_no_progress',
+                    'snmp_bulk_invalid_oid_sequence', 'snmp_bulk_socket_failed',
+                    'snmp_bulk_send_failed', 'snmp_bulk_host_not_allowed',
+                ], true) ? $reported : 'snmp_bulk_transport_failed';
             }
         }
 
@@ -138,11 +144,10 @@ class NativeSnmpTransport
             $profile, $host, $root, $cursor, $limit, $maxSeconds, $maxValueBytes
         );
 
-        if ($bulkFailed && $result['error'] !== null) {
-            $result['error'] = match ($result['error']) {
-                'snmp_getnext_failed' => 'snmp_bulk_and_getnext_failed',
-                default => $result['error'],
-            };
+        if ($bulkFailureCode !== null && $result['error'] !== null) {
+            // Both methods failed. Concise labels make queue/agent errors
+            // distinguishable on Filament without leaking credentials.
+            $result['error'] = $bulkFailureCode.'_and_'.$result['error'];
         }
 
         return $result;
@@ -268,7 +273,8 @@ class NativeSnmpTransport
                     $reply = @$session->getnext(['.'.$cursor]);
                 } catch (\Throwable) {
                     return compact('rows', 'cursor') + [
-                        'finished' => false, 'error' => 'snmp_getnext_failed',
+                        'finished' => false,
+                        'error' => $this->nativeErrorCode($session),
                     ];
                 }
 
@@ -279,7 +285,7 @@ class NativeSnmpTransport
                     return compact('rows', 'cursor') + [
                         'finished' => $session->getErrno() === SNMP::ERRNO_NOERROR,
                         'error' => $session->getErrno() === SNMP::ERRNO_NOERROR
-                            ? null : 'snmp_getnext_failed',
+                            ? null : $this->nativeErrorCode($session),
                     ];
                 }
 
@@ -336,6 +342,16 @@ class NativeSnmpTransport
         } finally {
             $session->close();
         }
+    }
+
+    private function nativeErrorCode(SNMP $session): string
+    {
+        return match ($session->getErrno()) {
+            SNMP::ERRNO_TIMEOUT => 'snmp_getnext_timeout',
+            SNMP::ERRNO_ERROR_IN_REPLY => 'snmp_getnext_agent_error',
+            SNMP::ERRNO_OID_PARSING_ERROR => 'snmp_getnext_invalid_oid',
+            default => 'snmp_getnext_failed',
+        };
     }
 
     private function session(NetworkSnmpProfile $profile, string $host): SNMP
