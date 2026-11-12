@@ -84,7 +84,7 @@ connectivity, HTTPS status checks, an operational dashboard and service targets.
 - Aksi **Buka Perangkat** dan **Target Layanan** hanya tampil sesuai
   hak akses dan tipe target. Tidak ada migrasi, cron, atau worker baru.
 
-## Phase 4: SNMPv3 interface telemetry (opt-in)
+## Phase 4: SNMPv3 / SNMPv2c interface telemetry (opt-in)
 
 - All code paths are inactive until **both** NETWORK_QUALITY_ENABLED=true and
   NETWORK_QUALITY_SNMP_ENABLED=true. Adding migration alone does not contact
@@ -95,9 +95,9 @@ connectivity, HTTPS status checks, an operational dashboard and service targets.
   /www/server/php/82/bin/php -m | grep -i snmp). If missing, collector writes
   an unknown measurement with snmp_extension_missing instead of marking the
   port down.
-- SNMP read access is **v3 authPriv only**, AES privacy; supported authentication
+- SNMPv3 uses **authPriv** with AES privacy (recommended); supported authentication
   algorithms are SHA256, SHA512 (Net-SNMP version permitting), and SHA for older
-  devices. MD5, DES, noAuthNoPriv, SNMPv1/v2c are deliberately excluded.
+  devices. MD5, DES, noAuthNoPriv, SNMPv1 is excluded; SNMPv2c is available separately with explicit opt-in.
 - Grant a read-only SNMPv3 user on each switch/router with UDP 161 restricted
   to the monitoring server. In **Perangkat > edit > Monitoring SNMPv3**,
   configure a unique profile. Secrets are encrypted via Laravel APP_KEY and
@@ -238,3 +238,69 @@ required; the separate agent is scheduled by cron on each probe host.
 - To roll back, disable NETWORK_QUALITY_INCIDENTS_ENABLED, rebuild
   Laravel configuration cache and restart queue workers. Do not drop
   audit/reporting tables without separately deciding data retention.
+
+
+## SNMPv2c compatibility (new; optional and security-restricted)
+
+The UI at **Infrastruktur > Perangkat > Edit > Monitoring SNMP** now
+offers a per-device **Versi SNMP** choice (v3 or v2c). Existing profiles
+automatically remain v3, with their encrypted authPriv credentials
+unchanged. Only one protocol/profile is configured per device; when
+switching protocols, credentials for the old protocol are cleared from
+the database and must be entered again if switching back.
+
+### Security and activation
+
+- SNMPv2c is **not SNMPv2 with encryption**: its community string travels
+  unencrypted in network packets. Prefer SNMPv3 authPriv on all devices
+  that support it. Use v2c only for legacy hardware on a dedicated
+  management VLAN or other trusted and restricted segment.
+- Configure the SNMPv2c community on the device itself as **read-only**
+  and allow UDP port 161 only from the monitoring server's management
+  address. This application issues only read operations (GET/WALK),
+  but the device must enforce read-only privileges.
+- Community must be unique (8–128 characters, preferably 16+ random),
+  never the common public/private defaults. Input is encrypted using the
+  existing Laravel APP_KEY, never repopulated into the form, never shown
+  in tables or logged. This **does not encrypt traffic on the wire**.
+- In .env, turn on SNMP and separately opt in to the weaker protocol:
+
+  NETWORK_QUALITY_ENABLED=true
+  NETWORK_QUALITY_SNMP_ENABLED=true
+  NETWORK_QUALITY_SNMP_V2C_ENABLED=true
+
+  Setting SNMP_V2C_ENABLED to false leaves existing v3 polling active
+  and stops dispatch/collection of v2c measurements. This flag is OFF
+  by default even if SNMPv3 monitoring is enabled.
+- For aaPanel production using **PHP 8.1**, ensure the same CLI binary is
+  used by the queue worker and the extension is enabled:
+
+  /www/server/php/81/bin/php -r 'echo extension_loaded("snmp") ? "OK" : "MISSING";'
+
+  No additional Python package, Cron task or Supervisor program is needed
+  for v2c: it uses the existing network-quality queue worker.
+- Before pulling the new code in production, back up the database.
+  This feature has an **additive migration** that adds version and
+  encrypted community columns while allowing the v3 credential columns
+  to be null for v2c-only records. Run migration and rebuild cached config
+  as **www** before using the new UI. Do not silently change APP_KEY.
+- The interface monitor uses the same IF-MIB 64-bit counters for v3
+  and v2c. When changing version, the rate requires two new measurements
+  from the same protocol; historical data remains and is labeled with
+  its SNMP version in the Traffic Interface/History tables.
+- Rollback operationally: set NETWORK_QUALITY_SNMP_V2C_ENABLED=false,
+  rebuild config cache and restart workers; v3 remains available.
+  Schema rollback is intentionally blocked if v2c profiles exist,
+  to avoid silently destroying their credentials.
+
+### Filament workflow
+
+1. Open **Infrastruktur > Perangkat**, then edit a switch/router.
+2. In the **Monitoring SNMP** relation tab, click **Atur SNMP** or edit
+   the existing profile; choose SNMPv3 (recommended) or SNMPv2c.
+3. For v2c, enter the unique community string in its password field.
+   The v3 authentication and privacy password inputs are hidden in v2c mode.
+4. Toggle **Aktifkan Polling SNMP**, ensure the device itself has
+   Monitoring enabled and a permitted management IP.
+5. Check **Infrastruktur > Traffic Interface**; v2c rows are labeled
+   separately and include port status, RX/TX, error deltas and history.

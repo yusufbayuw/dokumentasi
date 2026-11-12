@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\Models\NetworkSnmpProfile;
 use App\NetworkMonitoring\SnmpProtocolPolicy;
+use App\Rules\SnmpReadOnlyCommunity;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 class NetworkSnmpV2cTest extends TestCase
@@ -55,7 +57,7 @@ class NetworkSnmpV2cTest extends TestCase
         );
         $this->assertStringContainsString("TextInput::make('community')", $form);
         $this->assertStringContainsString('->afterStateHydrated(', $form);
-        $this->assertStringContainsString('SnmpProtocolPolicy::communityIsSafe', $form);
+        $this->assertStringContainsString('->rules([new SnmpReadOnlyCommunity()])', $form);
         $this->assertStringNotContainsString('TextColumn::make(\'community\')', $form);
     }
 
@@ -66,6 +68,19 @@ class NetworkSnmpV2cTest extends TestCase
         }
 
         $this->assertTrue(SnmpProtocolPolicy::communityIsSafe('ro-community-2026'));
+    }
+
+    public function test_v2c_community_validation_rejects_known_defaults(): void
+    {
+        $bad = Validator::make(['community' => 'private'], [
+            'community' => ['required', new SnmpReadOnlyCommunity()],
+        ]);
+        $this->assertTrue($bad->fails());
+
+        $good = Validator::make(['community' => 'ro-community-2026'], [
+            'community' => ['required', new SnmpReadOnlyCommunity()],
+        ]);
+        $this->assertFalse($good->fails());
     }
 
     public function test_collector_uses_native_php_snmp_v2c_without_shell_execution(): void
