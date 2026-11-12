@@ -20,8 +20,9 @@ class CollectDeviceSnmpSnapshot implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    public int $tries = 2;
     public int $timeout = 70;
+    public int $backoff = 10;
 
     public function __construct(public int $snapshotId)
     {
@@ -36,6 +37,9 @@ class CollectDeviceSnmpSnapshot implements ShouldQueue
 
         $lock = Cache::lock('snmp:snapshot:'.$this->snapshotId, 90);
         if (! $lock->get()) {
+            // Another worker may still be finishing this snapshot chunk.
+            // Do not lose the continuation when multiple workers are active.
+            $this->release(5);
             return;
         }
 
@@ -159,7 +163,7 @@ class CollectDeviceSnmpSnapshot implements ShouldQueue
 
             $snapshot->save();
             // Continue on the same queue, one bounded page per job.
-            self::dispatch($snapshot->id)->onQueue('network-quality');
+            self::dispatch($snapshot->id)->onQueue('network-quality')->delay(now()->addSeconds(3));
         } finally {
             $lock->release();
         }

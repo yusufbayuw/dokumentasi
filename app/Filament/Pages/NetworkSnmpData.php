@@ -8,6 +8,7 @@ use App\Models\NetworkSnmpProfile;
 use App\Models\NetworkSnmpSnapshot;
 use App\NetworkMonitoring\SnmpProtocolPolicy;
 use Filament\Notifications\Notification;
+use Filament\Actions;
 use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Contracts\HasTable;
@@ -35,6 +36,16 @@ class NetworkSnmpData extends Page implements HasTable
             && (bool) config('network_quality.snmp.enabled', false)
             && (auth()->user()?->can('view_any_device') ?? false)
             && (auth()->user()?->can('update_device') ?? false);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\Action::make('history')
+                ->label('Riwayat Snapshot')
+                ->icon('heroicon-o-clock')
+                ->url(NetworkSnmpSnapshotHistory::getUrl()),
+        ];
     }
 
     public function table(Table $table): Table
