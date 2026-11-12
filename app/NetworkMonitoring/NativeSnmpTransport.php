@@ -141,8 +141,25 @@ class NativeSnmpTransport
                 }
 
                 if (! is_array($reply) || count($reply) !== 1) {
+                    // A few agents signal end-of-MIB by returning no varbind.
+                    // Only treat it as normal completion when the native
+                    // extension explicitly reports no SNMP protocol error.
                     return compact('rows', 'cursor') + [
-                        'finished' => false, 'error' => 'snmp_getnext_failed',
+                        'finished' => $session->getErrno() === SNMP::ERRNO_NOERROR,
+                        'error' => $session->getErrno() === SNMP::ERRNO_NOERROR
+                            ? null : 'snmp_getnext_failed',
+                    ];
+                }
+
+                $raw = reset($reply);
+                $type = is_object($raw) && property_exists($raw, 'type')
+                    ? (int) $raw->type : null;
+
+                // Net-SNMP uses ASN exception tag 130 for endOfMibView.
+                // It may echo the request OID, so check before ordering.
+                if ($type === 130) {
+                    return compact('rows', 'cursor') + [
+                        'finished' => true, 'error' => null,
                     ];
                 }
 
@@ -159,11 +176,8 @@ class NativeSnmpTransport
                     ];
                 }
 
-                $raw = reset($reply);
                 $value = is_object($raw) && property_exists($raw, 'value')
                     ? (string) $raw->value : (string) $raw;
-                $type = is_object($raw) && property_exists($raw, 'type')
-                    ? (int) $raw->type : null;
 
                 $rawBytes = strlen($value);
                 $truncated = $rawBytes > $maxValueBytes;

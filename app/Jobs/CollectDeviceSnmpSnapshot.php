@@ -172,9 +172,12 @@ class CollectDeviceSnmpSnapshot implements ShouldQueue
     private function finish(NetworkSnmpSnapshot $snapshot, ?string $error = null): void
     {
         $snapshot->status = $error === null && $snapshot->limited_values === 0
+            && $snapshot->oid_count > 0
             ? 'complete'
             : ($snapshot->oid_count > 0 ? 'partial' : 'failed');
-        $snapshot->error_code = $error ?? ($snapshot->limited_values > 0 ? 'snmp_value_limit' : null);
+        $snapshot->error_code = $error
+            ?? ($snapshot->limited_values > 0 ? 'snmp_value_limit'
+                : ($snapshot->oid_count === 0 ? 'snmp_no_accessible_oids' : null));
         $snapshot->finished_at = now();
         $snapshot->save();
 
