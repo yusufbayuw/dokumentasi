@@ -26,6 +26,8 @@ return [
         'snapshot_max_minutes' => max(5, min(240, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_MINUTES', 90))),
         'snapshot_max_value_bytes' => max(512, min(65536, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_VALUE_BYTES', 8192))),
         'snapshot_retention_days' => max(1, min(30, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_RETENTION_DAYS', 3))),
+        // Legacy interface-derived polling is no longer scheduled.
+        'legacy_interface_metrics_enabled' => (bool) env('NETWORK_QUALITY_SNMP_LEGACY_INTERFACE_METRICS', false),
         'interval_minutes' => max(1, min(60, (int) env('NETWORK_QUALITY_SNMP_INTERVAL_MINUTES', 5))),
         'max_devices_per_cycle' => max(1, min(100, (int) env('NETWORK_QUALITY_SNMP_MAX_DEVICES', 10))),
         'max_interfaces_per_device' => max(1, min(48, (int) env('NETWORK_QUALITY_SNMP_MAX_INTERFACES', 16))),

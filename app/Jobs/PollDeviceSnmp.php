@@ -23,7 +23,8 @@ class PollDeviceSnmp implements ShouldQueue
     public function handle(SnmpInterfacePoller $poller): void
     {
         if (! config('network_quality.enabled', false)
-            || ! config('network_quality.snmp.enabled', false)) {
+            || ! config('network_quality.snmp.enabled', false)
+            || ! config('network_quality.snmp.legacy_interface_metrics_enabled', false)) {
             return;
         }
 
