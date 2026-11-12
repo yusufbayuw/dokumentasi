@@ -73,7 +73,7 @@ class AnalyzeNetworkIncidents implements ShouldQueue
                         'message' => 'Dua atau lebih pengukuran berurutan telah kembali baik.',
                     ]);
 
-                    return $incident->id;
+                    return null; // Successful recovery should not trigger an alert.
                 }
 
                 $hint = $correlation->hint($newest);

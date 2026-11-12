@@ -24,7 +24,7 @@ class NetworkIncidentCorrelation
                 ->limit(30)->get(['source_device_id', 'target_device_id']);
 
             $neighbors = $links->map(fn ($l): int => (int) (
-                $l->source_device_id === $id ? $l->target_device_id : $l->source_device_id
+                (int) $l->source_device_id === $id ? $l->target_device_id : $l->source_device_id
             ))->filter(fn (int $neighbor): bool => $neighbor !== $id && $neighbor > 0)
                 ->unique()->take(10);
 
