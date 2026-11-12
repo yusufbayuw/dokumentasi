@@ -29,6 +29,10 @@ class SnmpV2cBulkReader
             throw new RuntimeException('snmp_bulk_invalid_cursor');
         }
 
+        if (! SnmpProtocolPolicy::communityIsSafe($community)) {
+            throw new RuntimeException('snmp_bulk_invalid_community');
+        }
+
         $repetitions = max(1, min(12, $repetitions));
         $timeoutUs = max(200000, min(2000000, $timeoutUs));
         $requestId = random_int(1, 0x7fffffff);

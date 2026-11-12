@@ -14,6 +14,7 @@ return [
         // SNMPv2c transmits community strings without encryption.
         // It requires explicit administrator opt-in in addition to SNMP.
         'v2c_enabled' => (bool) env('NETWORK_QUALITY_SNMP_V2C_ENABLED', false),
+        'v2c_bulk_enabled' => (bool) env('NETWORK_QUALITY_SNMP_V2C_BULK_ENABLED', true),
         // Primary collection model: full device OID snapshots, independent
         // from CMDB interfaces and traffic metrics.
         'snapshot_interval_minutes' => max(5, min(1440, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_INTERVAL_MINUTES', 60))),
