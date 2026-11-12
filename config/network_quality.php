@@ -8,6 +8,11 @@ return [
     'timeout_seconds' => max(1, min(5, (int) env('NETWORK_QUALITY_TIMEOUT', 2))),
     'retention_days' => max(7, (int) env('NETWORK_QUALITY_RETENTION_DAYS', 14)),
     'max_jobs_per_cycle' => max(1, min(2000, (int) env('NETWORK_QUALITY_MAX_JOBS', 500))),
+    // Phase 5: registered remote probes, disabled until explicitly provisioned.
+    'remote' => [
+        'enabled' => (bool) env('NETWORK_QUALITY_REMOTE_ENABLED', false),
+        'max_skew_seconds' => max(30, min(600, (int) env('NETWORK_QUALITY_REMOTE_MAX_SKEW', 300))),
+    ],
     'quality' => [
         'loss_degraded_pct' => 1.0,
         'loss_bad_pct' => 5.0,

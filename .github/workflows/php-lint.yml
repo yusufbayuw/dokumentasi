@@ -35,6 +35,11 @@ jobs:
           find app bootstrap config database routes tests -type f -name '*.php' -print0 \
             | xargs -0 -n1 php -l
 
+      - name: Test distributed probe agent (Python 3)
+        run: |
+          python3 -m py_compile scripts/network_probe_agent.py
+          python3 -m unittest discover -s tests/python -v
+
       - name: Run test suite
         env:
           APP_ENV: testing

@@ -83,3 +83,73 @@ connectivity, HTTPS status checks, an operational dashboard and service targets.
   memperbarui diri setiap 15 detik selama terbuka.
 - Aksi **Buka Perangkat** dan **Target Layanan** hanya tampil sesuai
   hak akses dan tipe target. Tidak ada migrasi, cron, atau worker baru.
+
+
+## Phase 5: multi-location probes and ISP monitoring (opt-in)
+
+The original local monitoring still runs even with remote probes disabled.
+Remote reports are accepted only if BOTH NETWORK_QUALITY_ENABLED=true and
+NETWORK_QUALITY_REMOTE_ENABLED=true. No new server-side queue or cron is
+required; the separate agent is scheduled by cron on each probe host.
+
+### Register and secure each probe
+
+1. Back up DB and run php artisan migrate --force on the central server,
+   then clear and rebuild config cache as the same system user as aaPanel.
+2. Turn on NETWORK_QUALITY_REMOTE_ENABLED=true in central .env.
+3. In Filament **Infrastruktur > Lokasi Probe**, register a name, unit, ISP
+   and strong random token (>=32 characters). Keep the location disabled
+   until setup is tested. Token is stored only as SHA-256 digest, cannot be
+   retrieved from the UI, and must be saved securely by the administrator.
+   Example token generation: python3 -c 'import secrets;print(secrets.token_hex(32))'
+4. Create explicit service targets in **Target Layanan** and enable them.
+   Each location's agent gets a local static list of approved target IDs,
+   probe types and exact addresses. The collector never accepts arbitrary
+   destinations pushed by the central server.
+5. Copy scripts/network_probe_agent.py and the example JSON (edited for
+   your location) to a trusted machine on the desired ISP/network path.
+   Python >=3.10 is required, with system ping installed on Linux. The
+   agent needs egress HTTPS access to the central application URL.
+   Keep config outside the public webroot and do NOT store any API token
+   inside the JSON file or the Git repository.
+6. On that host, set NQ_PROBE_TOKEN via a protected environment file or
+   service manager. Run once with token in process environment and a JSON
+   file as the --config argument. For production, use a protected
+   environment file and a 5-minute cron or systemd timer. Do not enter
+   secrets into shell history.
+7. Enable the probe location in Filament. Confirm **Terakhir Mengirim**
+   changes and results appear in **Kualitas per ISP**.
+
+### How values are defined
+
+- A probe location is a measurement vantage point. ISP names are configured
+  by ICT, not automatically discovered. If a host is multi-homed, binding
+  traffic to an ISP/network interface is the operator's responsibility.
+- Each target/location combination has an independent monitor_key; original
+  local monitor keys remain untouched. Local data display as Server Utama
+  and remote data as its registered location/ISP.
+- The remote agent uses static local CIDR/domain allowlists, HTTPS TLS
+  validation and no redirect-following. API reports require a location
+  Bearer token, are rate-limited, must be fresh (+/-5min default), must
+  match an enabled central target (including address/port/method) and have
+  unique UUID report IDs. The server controls ISP labels and quality
+  thresholds; the client cannot choose them.
+- Results are accepted from a trusted probe credential; this does not
+  cryptographically prove they reflect the actual route or ISP. Restrict
+  token access, deploy the agent on dedicated systems and rotate/revoke
+  tokens if compromised. No arbitrary shell execution is implemented by
+  the central server.
+- Missing or stale remote reports indicate a probe-health issue, not
+  automatically ISP downtime. The **Kualitas per ISP** dashboard compares
+  latest samples, not contractual SLA uptime or total ISP bandwidth.
+- Rollback: set NETWORK_QUALITY_REMOTE_ENABLED=false, clear config cache,
+  then disable remote-agent cron tasks. Leave historical data/tables intact.
+
+### Troubleshooting
+
+- 401: location disabled or token mismatch.
+- 404: remote monitoring globally disabled.
+- 422: target not enabled/matching, server allowlist mismatch, clock skew,
+  or malformed report.
+- 429: report rate limit reached; stagger agent tasks.
+- 500: inspect central Laravel logs as www, never log or print tokens.

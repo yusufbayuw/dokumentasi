@@ -6,6 +6,7 @@ use App\Filament\Resources\NetworkQualityTargetResource;
 use App\Filament\Widgets\NetworkQualityLatencyChart;
 use App\Filament\Widgets\NetworkQualityOverview;
 use App\Models\NetworkQualityMeasurement;
+use App\Models\NetworkProbeLocation;
 use App\Models\Unit;
 use App\Services\NetworkQualitySnapshot;
 use Filament\Actions;
@@ -59,6 +60,16 @@ class NetworkQuality extends Page implements HasTable
                 ->modalWidth('7xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Tutup'),
+            Actions\Action::make('probeLocations')
+                ->label('Lokasi Probe')
+                ->icon('heroicon-o-map-pin')
+                ->url(\App\Filament\Resources\NetworkProbeLocationResource::getUrl('index'))
+                ->visible(fn (): bool => \App\Filament\Resources\NetworkProbeLocationResource::canViewAny()),
+            Actions\Action::make('ispQuality')
+                ->label('Kualitas per ISP')
+                ->icon('heroicon-o-chart-pie')
+                ->url(NetworkIspQuality::getUrl())
+                ->visible(fn (): bool => NetworkIspQuality::canAccess()),
             Actions\Action::make('targets')
                 ->label('Target Layanan')
                 ->icon('heroicon-o-adjustments-horizontal')
@@ -86,6 +97,12 @@ class NetworkQuality extends Page implements HasTable
                     ->label('Waktu')->dateTime('d/m/Y H:i:s')->sortable(),
                 Tables\Columns\TextColumn::make('target_name')
                     ->label('Target')->searchable()->wrap(),
+                Tables\Columns\TextColumn::make('probeLocation.name')
+                    ->label('Lokasi Probe')->placeholder('Server Utama')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('isp_name')
+                    ->label('ISP')->placeholder('Belum ditetapkan')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('probe_type')
                     ->label('Metode')->badge(),
                 Tables\Columns\TextColumn::make('address')
@@ -127,6 +144,17 @@ class NetworkQuality extends Page implements HasTable
                     ->label('Kode Error')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('probe_location_id')
+                    ->label('Lokasi Probe')
+                    ->relationship('probeLocation', 'name')
+                    ->searchable()->preload()
+                    ->visible(fn (): bool => config('network_quality.remote.enabled', false)),
+                Tables\Filters\SelectFilter::make('isp_name')
+                    ->label('ISP')
+                    ->options(fn (): array => NetworkProbeLocation::query()->orderBy('isp_name')
+                        ->distinct()->pluck('isp_name', 'isp_name')->all())
+                    ->searchable()
+                    ->visible(fn (): bool => config('network_quality.remote.enabled', false)),
                 Tables\Filters\SelectFilter::make('probe_type')
                     ->label('Metode')->options([
                         'icmp' => 'Ping', 'dns' => 'DNS', 'tcp' => 'TCP', 'https' => 'HTTPS',
