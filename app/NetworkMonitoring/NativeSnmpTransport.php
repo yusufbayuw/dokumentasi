@@ -15,6 +15,10 @@ use SNMP;
  */
 class NativeSnmpTransport
 {
+    public function __construct(private SnmpV2cBulkReader $bulkReader)
+    {
+    }
+
     public function available(): bool
     {
         return class_exists(SNMP::class);
@@ -110,6 +114,139 @@ class NativeSnmpTransport
         int $maxSeconds,
         int $maxValueBytes,
     ): array {
+        // Use bounded GETBULK for SNMPv2c first. SwOS switches can respond
+        // to sysDescr GETNEXT but fail the following GETNEXT request.
+        // SNMPv3 continues using the existing authenticated native path.
+        $bulkFailureCode = null;
+
+        if ($profile->version === '2c'
+            && (bool) config('network_quality.snmp.v2c_bulk_enabled', true)
+            && SnmpProtocolPolicy::canPoll($profile)) {
+            try {
+                return $this->v2cBulkSegment(
+                    $profile, $host, $root, $cursor,
+                    $limit, $maxSeconds, $maxValueBytes
+                );
+            } catch (\Throwable $exception) {
+                // Fall back to native GETNEXT. Keep a sanitized failure code
+                // if both methods fail; never expose community or raw packets.
+                $reported = $exception->getMessage();
+                $bulkFailureCode = in_array($reported, [
+                    'snmp_bulk_timeout', 'snmp_bulk_agent_error',
+                    'snmp_bulk_unavailable_oid', 'snmp_bulk_no_progress',
+                    'snmp_bulk_invalid_oid_sequence', 'snmp_bulk_socket_failed',
+                    'snmp_bulk_send_failed', 'snmp_bulk_host_not_allowed',
+                ], true) ? $reported : 'snmp_bulk_transport_failed';
+            }
+        }
+
+        $result = $this->nativeSnapshotSegment(
+            $profile, $host, $root, $cursor, $limit, $maxSeconds, $maxValueBytes
+        );
+
+        if ($bulkFailureCode !== null && $result['error'] !== null) {
+            // Both methods failed. Concise labels make queue/agent errors
+            // distinguishable on Filament without leaking credentials.
+            $result['error'] = $bulkFailureCode.'_and_'.$result['error'];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array{rows:list<array{oid:string,value:string,type:?int,encoding:string,raw_bytes:int,truncated:bool}>,cursor:string,finished:bool,error:?string}
+     */
+    private function v2cBulkSegment(
+        NetworkSnmpProfile $profile,
+        string $host,
+        string $root,
+        string $cursor,
+        int $limit,
+        int $maxSeconds,
+        int $maxValueBytes,
+    ): array {
+        $root = SnmpOidCursor::normalize($root);
+        $cursor = SnmpOidCursor::normalize($cursor);
+
+        if ($root === null || $cursor === null
+            || ! SnmpOidCursor::within($cursor, $root)
+            || ! SnmpOidCursor::within($root, '1.3.6.1')) {
+            throw new RuntimeException('snmp_invalid_oid_root');
+        }
+
+        $limit = max(1, min(100, $limit));
+        $maxSeconds = max(3, min(30, $maxSeconds));
+        $maxValueBytes = max(512, min(65536, $maxValueBytes));
+        $timeoutUs = (int) config('network_quality.snmp.timeout_us', 1000000);
+        $deadline = microtime(true) + $maxSeconds;
+        $rows = [];
+
+        while (count($rows) < $limit && microtime(true) < $deadline) {
+            $repetitions = min(8, $limit - count($rows));
+            $response = $this->bulkReader->read(
+                $host, (string) $profile->community, $cursor,
+                $repetitions, $timeoutUs
+            );
+
+            foreach ($response['rows'] as $entry) {
+                $oid = SnmpOidCursor::normalize($entry['oid']);
+                if ($oid === null || ! SnmpOidCursor::greaterThan($oid, $cursor)) {
+                    throw new RuntimeException('snmp_bulk_invalid_oid_sequence');
+                }
+
+                if (! SnmpOidCursor::within($oid, $root)) {
+                    return compact('rows', 'cursor') + [
+                        'finished' => true, 'error' => null,
+                    ];
+                }
+
+                $value = $entry['value'];
+                $rawBytes = strlen($value);
+                $truncated = $rawBytes > $maxValueBytes;
+                if ($truncated) {
+                    $value = substr($value, 0, $maxValueBytes);
+                }
+
+                $encoding = preg_match('//u', $value) === 1
+                    ? 'utf8'
+                    : 'base64';
+
+                $rows[] = [
+                    'oid' => $oid,
+                    'value' => $encoding === 'base64' ? base64_encode($value) : $value,
+                    'type' => $entry['type'],
+                    'encoding' => $encoding,
+                    'raw_bytes' => $rawBytes,
+                    'truncated' => $truncated,
+                ];
+                $cursor = $oid;
+            }
+
+            if ($response['finished']) {
+                return compact('rows', 'cursor') + [
+                    'finished' => true, 'error' => null,
+                ];
+            }
+
+            if ($response['rows'] === []) {
+                throw new RuntimeException('snmp_bulk_no_progress');
+            }
+        }
+
+        return compact('rows', 'cursor') + [
+            'finished' => false, 'error' => null,
+        ];
+    }
+
+    private function nativeSnapshotSegment(
+        NetworkSnmpProfile $profile,
+        string $host,
+        string $root,
+        string $cursor,
+        int $limit,
+        int $maxSeconds,
+        int $maxValueBytes,
+    ): array {
         $root = SnmpOidCursor::normalize($root);
         $cursor = SnmpOidCursor::normalize($cursor);
         if ($root === null || $cursor === null
@@ -136,7 +273,8 @@ class NativeSnmpTransport
                     $reply = @$session->getnext(['.'.$cursor]);
                 } catch (\Throwable) {
                     return compact('rows', 'cursor') + [
-                        'finished' => false, 'error' => 'snmp_getnext_failed',
+                        'finished' => false,
+                        'error' => $this->nativeErrorCode($session),
                     ];
                 }
 
@@ -147,7 +285,7 @@ class NativeSnmpTransport
                     return compact('rows', 'cursor') + [
                         'finished' => $session->getErrno() === SNMP::ERRNO_NOERROR,
                         'error' => $session->getErrno() === SNMP::ERRNO_NOERROR
-                            ? null : 'snmp_getnext_failed',
+                            ? null : $this->nativeErrorCode($session),
                     ];
                 }
 
@@ -204,6 +342,16 @@ class NativeSnmpTransport
         } finally {
             $session->close();
         }
+    }
+
+    private function nativeErrorCode(SNMP $session): string
+    {
+        return match ($session->getErrno()) {
+            SNMP::ERRNO_TIMEOUT => 'snmp_getnext_timeout',
+            SNMP::ERRNO_ERROR_IN_REPLY => 'snmp_getnext_agent_error',
+            SNMP::ERRNO_OID_PARSING_ERROR => 'snmp_getnext_invalid_oid',
+            default => 'snmp_getnext_failed',
+        };
     }
 
     private function session(NetworkSnmpProfile $profile, string $host): SNMP
