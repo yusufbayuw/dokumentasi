@@ -14,6 +14,18 @@ return [
         // SNMPv2c transmits community strings without encryption.
         // It requires explicit administrator opt-in in addition to SNMP.
         'v2c_enabled' => (bool) env('NETWORK_QUALITY_SNMP_V2C_ENABLED', false),
+        // Primary collection model: full device OID snapshots, independent
+        // from CMDB interfaces and traffic metrics.
+        'snapshot_interval_minutes' => max(5, min(1440, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_INTERVAL_MINUTES', 60))),
+        'snapshot_roots' => array_values(array_filter(array_map(
+            'trim', explode(',', (string) env('NETWORK_QUALITY_SNMP_SNAPSHOT_ROOTS', '1.3.6.1'))
+        ))),
+        'snapshot_max_oids' => max(100, min(100000, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_OIDS', 20000))),
+        'snapshot_chunk_oids' => max(5, min(100, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_CHUNK_OIDS', 30))),
+        'snapshot_chunk_seconds' => max(5, min(30, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_CHUNK_SECONDS', 15))),
+        'snapshot_max_minutes' => max(5, min(240, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_MINUTES', 90))),
+        'snapshot_max_value_bytes' => max(512, min(65536, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_MAX_VALUE_BYTES', 8192))),
+        'snapshot_retention_days' => max(1, min(30, (int) env('NETWORK_QUALITY_SNMP_SNAPSHOT_RETENTION_DAYS', 3))),
         'interval_minutes' => max(1, min(60, (int) env('NETWORK_QUALITY_SNMP_INTERVAL_MINUTES', 5))),
         'max_devices_per_cycle' => max(1, min(100, (int) env('NETWORK_QUALITY_SNMP_MAX_DEVICES', 10))),
         'max_interfaces_per_device' => max(1, min(48, (int) env('NETWORK_QUALITY_SNMP_MAX_INTERFACES', 16))),

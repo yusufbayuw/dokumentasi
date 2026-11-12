@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class NetworkSnmpProfile extends Model
 {
@@ -38,6 +40,16 @@ class NetworkSnmpProfile extends Model
                 $profile->community = null;
             }
         });
+    }
+
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(NetworkSnmpSnapshot::class, 'network_snmp_profile_id');
+    }
+
+    public function latestSnapshot(): HasOne
+    {
+        return $this->hasOne(NetworkSnmpSnapshot::class, 'network_snmp_profile_id')->latestOfMany();
     }
 
     public function device(): BelongsTo
