@@ -7,6 +7,7 @@ use App\Filament\Widgets\NetworkQualityLatencyChart;
 use App\Filament\Widgets\NetworkQualityOverview;
 use App\Models\NetworkQualityMeasurement;
 use App\Models\Unit;
+use App\Services\NetworkQualitySnapshot;
 use Filament\Actions;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -14,6 +15,8 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\View\View;
+use Livewire\Attributes\On;
 
 class NetworkQuality extends Page implements HasTable
 {
@@ -40,12 +43,38 @@ class NetworkQuality extends Page implements HasTable
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('qualityDetails')
+                ->label('Lihat Rincian')
+                ->icon('heroicon-o-magnifying-glass-circle')
+                ->modalHeading(fn (array $arguments): string => match (NetworkQualitySnapshot::validQuality($arguments['quality'] ?? 'all')) {
+                    'good' => 'Rincian Kualitas Baik',
+                    'degraded' => 'Rincian Kualitas Menurun',
+                    'bad' => 'Rincian Kualitas Buruk',
+                    'unknown' => 'Rincian Belum Diketahui',
+                    default => 'Rincian Semua Target',
+                })
+                ->modalContent(fn (array $arguments): View => view('filament.pages.modals.network-quality-details', [
+                    'quality' => NetworkQualitySnapshot::validQuality($arguments['quality'] ?? 'all'),
+                ]))
+                ->modalWidth('7xl')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Tutup'),
             Actions\Action::make('targets')
                 ->label('Target Layanan')
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->url(NetworkQualityTargetResource::getUrl('index'))
                 ->visible(fn (): bool => NetworkQualityTargetResource::canViewAny()),
         ];
+    }
+
+    #[On('open-network-quality-details')]
+    public function openNetworkQualityDetails(string $quality = 'all'): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $this->mountAction('qualityDetails', [
+            'quality' => NetworkQualitySnapshot::validQuality($quality),
+        ]);
     }
 
     public function table(Table $table): Table
