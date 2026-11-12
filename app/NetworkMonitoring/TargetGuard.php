@@ -6,7 +6,11 @@ class TargetGuard
 {
     public function allows(string $probeType, string $address, ?int $port = null): bool
     {
-        $address = trim($address);
+        // Reject ambiguous/rewritten targets; validation must not silently
+        // trim one value while the runner connects to a different value.
+        if ($address !== trim($address)) {
+            return false;
+        }
 
         return match ($probeType) {
             'icmp' => $port === null && $this->allowedIp($address),

@@ -123,14 +123,15 @@ class ProbeRunner
             $timeout,
             STREAM_CLIENT_CONNECT,
         );
-        if (is_resource($socket)) {
+        $connected = is_resource($socket);
+        if ($connected) {
             fclose($socket);
         }
 
         return [
-            'status' => is_resource($socket) ? 'up' : 'down',
+            'status' => $connected ? 'up' : 'down',
             'latency_ms' => round((microtime(true) - $start) * 1000, 2),
-            'error_code' => is_resource($socket) ? null : 'tcp_connect_failed',
+            'error_code' => $connected ? null : 'tcp_connect_failed',
         ];
     }
 
