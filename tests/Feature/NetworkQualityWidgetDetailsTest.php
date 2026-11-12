@@ -40,6 +40,7 @@ class NetworkQualityWidgetDetailsTest extends TestCase
         $this->assertStringContainsString("modalWidth('7xl')", $page);
         $this->assertFileExists(resource_path('views/filament/pages/modals/network-quality-details.blade.php'));
         $this->assertFileExists(resource_path('views/livewire/network-quality-detail-table.blade.php'));
+        $this->assertStringContainsString('wire:poll.15s', file_get_contents(resource_path('views/livewire/network-quality-detail-table.blade.php')));
     }
 
     public function test_drill_down_is_read_only_and_contains_recommendation_and_navigation_actions(): void

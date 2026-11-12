@@ -66,3 +66,20 @@ connectivity, HTTPS status checks, an operational dashboard and service targets.
   storage has been added in this phase, so size queue/DB for the planned scale.
 - GitHub Actions validates syntax, PHPUnit tests and frontend build; complete
   staging smoke tests before promotion to production.
+
+## Rincian interaktif pada dashboard
+
+- Pada **Kualitas Jaringan**, klik salah satu kartu statistik:
+  **Target Diukur**, **Baik**, **Menurun**, **Buruk**, atau **Belum diketahui**.
+- Modal Filament menampilkan tabel yang dapat dicari, diurutkan, difilter
+  per unit/metode, dan dipaginasi. Satu baris mewakili pengukuran terbaru
+  untuk setiap target dalam jendela monitoring aktif (minimal 15 menit).
+  Histori lengkap tetap tersedia di tabel halaman utama.
+- Aksi **Rekomendasi** memberi langkah diagnosis indikatif berdasarkan
+  hasil pengukuran, tanpa perubahan otomatis pada perangkat.
+- Pengguna dengan izin `update_device` dapat menekan **Uji Ulang**
+  pada target aktif. Permintaan masuk ke queue `network-quality` dengan
+  pembatasan satu permintaan per target per 60 detik. Tabel pada modal
+  memperbarui diri setiap 15 detik selama terbuka.
+- Aksi **Buka Perangkat** dan **Target Layanan** hanya tampil sesuai
+  hak akses dan tipe target. Tidak ada migrasi, cron, atau worker baru.
