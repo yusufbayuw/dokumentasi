@@ -3,6 +3,8 @@
 namespace App\Console;
 
 use App\Jobs\PingIpAddress;
+use App\Jobs\DispatchNetworkQuality;
+use Illuminate\Support\Facades\DB;
 use App\Jobs\RestartFingerprintDevice;
 use App\Support\FingerprintQueue;
 use App\Models\Device;
@@ -30,6 +32,24 @@ class Kernel extends ConsoleKernel
             ->cron("*/{$minutes} * * * *")
             ->name('monitor-infrastructure')
             ->withoutOverlapping(10);
+
+        // The new quality engine is opt-in and never mutates legacy ICMP health.
+        $schedule->job(new DispatchNetworkQuality(), 'network-quality')
+            ->everyMinute()
+            ->name('monitor-network-quality')
+            ->withoutOverlapping(5)
+            ->when(fn (): bool => (bool) config('network_quality.enabled', false));
+
+        $schedule->call(function (): void {
+            $days = max(7, (int) config('network_quality.retention_days', 14));
+            DB::table('network_quality_measurements')
+                ->where('checked_at', '<', now()->subDays($days))
+                ->delete();
+        })
+            ->name('prune-network-quality')
+            ->dailyAt('02:35')
+            ->withoutOverlapping(30)
+            ->when(fn (): bool => (bool) config('network_quality.enabled', false));
 
         $schedule->call(function (): void {
             Device::query()

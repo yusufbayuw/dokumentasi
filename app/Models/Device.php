@@ -50,6 +50,11 @@ class Device extends Model
         return $this->hasOne(Topology::class, 'device_id', 'id');
     }
 
+    public function qualityMeasurements(): HasMany
+    {
+        return $this->hasMany(NetworkQualityMeasurement::class, 'device_id');
+    }
+
     public function monitoringChecks(): HasMany
     {
         return $this->hasMany(DeviceMonitoringCheck::class, 'device_id', 'id');
