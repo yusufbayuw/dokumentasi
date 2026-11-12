@@ -21,6 +21,7 @@ class NetworkSnmpProfile extends Model
         'auth_passphrase' => 'encrypted',
         'privacy_passphrase' => 'encrypted',
         'enabled' => 'boolean',
+        'last_polled_at' => 'datetime',
     ];
 
     protected static function booted(): void

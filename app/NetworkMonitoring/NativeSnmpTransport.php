@@ -52,21 +52,45 @@ class NativeSnmpTransport
     {
         $session = $this->session($profile, $host);
         try {
-            // IF-MIB::ifName. Only read from explicitly configured devices.
-            $values = @$session->walk('.1.3.6.1.2.1.31.1.1.1.1', true, 16);
-            if (! is_array($values)) {
-                return [];
-            }
+            // Prefer ifName. Legacy SNMPv2c devices may only expose
+            // IF-MIB::ifDescr, so fall back without changing CMDB data.
+            $oids = [
+                '.1.3.6.1.2.1.31.1.1.1.1', // ifName
+                '.1.3.6.1.2.1.2.2.1.2', // ifDescr
+            ];
+            foreach ($oids as $oid) {
+                try {
+                    $values = @$session->walk($oid, true, 16);
+                } catch (\Throwable) {
+                    $values = false;
+                }
 
-            $names = [];
-            foreach ($values as $suffix => $value) {
-                $index = ltrim((string) $suffix, '.');
-                if (ctype_digit($index) && (int) $index > 0 && (int) $index < 10000000) {
-                    $names[(int) $index] = trim((string) $value, '" ');
+                if (! is_array($values) || $values === []) {
+                    continue;
+                }
+
+                $names = [];
+                foreach ($values as $suffix => $value) {
+                    $index = ltrim((string) $suffix, '.');
+                    $name = trim((string) $value, '" ');
+
+                    if (ctype_digit($index) && (int) $index > 0
+                        && (int) $index <= 10000000 && $name !== '') {
+                        $names[(int) $index] = substr($name, 0, 255);
+                    }
+
+                    // Hard cap to avoid copying unusually large SNMP tables.
+                    if (count($names) >= 256) {
+                        break;
+                    }
+                }
+
+                if ($names !== []) {
+                    return $names;
                 }
             }
 
-            return $names;
+            return [];
         } finally {
             $session->close();
         }
