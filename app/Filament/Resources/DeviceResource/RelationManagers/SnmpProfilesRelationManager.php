@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\DeviceResource\RelationManagers;
 
+use App\Models\NetworkSnmpProfile;
+use App\Rules\SnmpReadOnlyCommunity;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -12,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 class SnmpProfilesRelationManager extends RelationManager
 {
     protected static string $relationship = 'snmpProfiles';
-    protected static ?string $title = 'Monitoring SNMPv3';
+    protected static ?string $title = 'Monitoring SNMP';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -24,42 +26,80 @@ class SnmpProfilesRelationManager extends RelationManager
     public function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Kredensial Monitoring (SNMPv3)')
-                ->description('Khusus authPriv (autentikasi + enkripsi AES). Gunakan akun SNMP baca-saja pada perangkat. Kata sandi tidak pernah ditampilkan kembali.')
+            Forms\Components\Section::make('Monitoring SNMP')
+                ->description('Gunakan SNMPv3 authPriv bila tersedia. SNMPv2c memerlukan community baca-saja dan jaringan manajemen terpercaya.')
                 ->columns(2)
                 ->schema([
+                    Forms\Components\Select::make('version')
+                        ->label('Versi SNMP')
+                        ->options(fn (?NetworkSnmpProfile $record): array =>
+                            (config('network_quality.snmp.v2c_enabled', false) || $record?->version === '2c')
+                                ? ['3' => 'SNMPv3 (disarankan)', '2c' => 'SNMPv2c (community)']
+                                : ['3' => 'SNMPv3 (disarankan)']
+                        )
+                        ->default('3')->live()->required()->searchable()->preload()
+                        ->helperText('Satu versi per perangkat. SNMPv2c perlu diizinkan dalam konfigurasi server.')
+                        ->columnSpanFull(),
+                    Forms\Components\Placeholder::make('v2c_warning')
+                        ->label('Peringatan SNMPv2c')
+                        ->content('Community SNMPv2c dikirim tanpa enkripsi melalui UDP 161. Gunakan community unik dengan hak baca-saja, batasi IP server monitoring dan gunakan VLAN manajemen.')
+                        ->visible(fn (Forms\Get $get): bool => $get('version') === '2c')
+                        ->columnSpanFull(),
+                    Forms\Components\TextInput::make('community')
+                        ->label('Community SNMPv2c')
+                        ->password()->revealable()->autocomplete('new-password')
+                        ->required(fn (Forms\Get $get, string $operation, ?NetworkSnmpProfile $record): bool =>
+                            $get('version') === '2c' && ($operation === 'create' || $record?->version !== '2c'))
+                        ->minLength(8)->maxLength(128)
+                        ->rules([new SnmpReadOnlyCommunity()])
+                        ->afterStateHydrated(fn (Forms\Components\TextInput $component) => $component->state(null))
+                        ->dehydrated(fn (Forms\Get $get, ?string $state): bool =>
+                            $get('version') === '2c' && filled($state))
+                        ->helperText('Kosongkan saat edit untuk mempertahankan community lama. Nilainya tidak pernah ditampilkan kembali.')
+                        ->visible(fn (Forms\Get $get): bool => $get('version') === '2c')
+                        ->columnSpanFull(),
                     Forms\Components\TextInput::make('security_name')
                         ->label('Nama Pengguna SNMPv3')
                         ->password()->revealable()->autocomplete('new-password')
-                        ->required(fn (string $operation): bool => $operation === 'create')
+                        ->required(fn (Forms\Get $get, string $operation, ?NetworkSnmpProfile $record): bool =>
+                            $get('version') === '3' && ($operation === 'create' || $record?->version !== '3'))
                         ->maxLength(128)
                         ->afterStateHydrated(fn (Forms\Components\TextInput $component) => $component->state(null))
-                        ->dehydrated(fn ($state): bool => filled($state))
+                        ->dehydrated(fn (Forms\Get $get, ?string $state): bool =>
+                            $get('version') === '3' && filled($state))
+                        ->visible(fn (Forms\Get $get): bool => $get('version') === '3')
                         ->helperText('Kosongkan saat edit untuk mempertahankan pengguna lama.'),
                     Forms\Components\Select::make('auth_protocol')
-                        ->label('Autentikasi')
+                        ->label('Autentikasi SNMPv3')
                         ->options(['SHA256' => 'SHA-256', 'SHA512' => 'SHA-512', 'SHA' => 'SHA-1 (kompatibilitas)'])
-                        ->default('SHA256')->searchable()->preload()->required(),
+                        ->default('SHA256')->searchable()->preload()->required()
+                        ->visible(fn (Forms\Get $get): bool => $get('version') === '3'),
                     Forms\Components\TextInput::make('auth_passphrase')
-                        ->label('Kata Sandi Autentikasi')
+                        ->label('Kata Sandi Autentikasi SNMPv3')
                         ->password()->revealable()->autocomplete('new-password')
                         ->minLength(8)
-                        ->required(fn (string $operation): bool => $operation === 'create')
+                        ->required(fn (Forms\Get $get, string $operation, ?NetworkSnmpProfile $record): bool =>
+                            $get('version') === '3' && ($operation === 'create' || $record?->version !== '3'))
                         ->afterStateHydrated(fn (Forms\Components\TextInput $component) => $component->state(null))
-                        ->dehydrated(fn ($state): bool => filled($state))
+                        ->dehydrated(fn (Forms\Get $get, ?string $state): bool =>
+                            $get('version') === '3' && filled($state))
+                        ->visible(fn (Forms\Get $get): bool => $get('version') === '3')
                         ->helperText('Minimal 8 karakter; kosongkan saat edit jika tidak berubah.'),
                     Forms\Components\TextInput::make('privacy_passphrase')
-                        ->label('Kata Sandi Enkripsi AES')
+                        ->label('Kata Sandi Enkripsi AES (SNMPv3)')
                         ->password()->revealable()->autocomplete('new-password')
                         ->minLength(8)
-                        ->required(fn (string $operation): bool => $operation === 'create')
+                        ->required(fn (Forms\Get $get, string $operation, ?NetworkSnmpProfile $record): bool =>
+                            $get('version') === '3' && ($operation === 'create' || $record?->version !== '3'))
                         ->afterStateHydrated(fn (Forms\Components\TextInput $component) => $component->state(null))
-                        ->dehydrated(fn ($state): bool => filled($state))
-                        ->helperText('Minimal 8 karakter; tidak disimpan dalam log atau hasil monitoring.'),
+                        ->dehydrated(fn (Forms\Get $get, ?string $state): bool =>
+                            $get('version') === '3' && filled($state))
+                        ->visible(fn (Forms\Get $get): bool => $get('version') === '3')
+                        ->helperText('Tidak ditampilkan kembali dan tidak disimpan dalam log.'),
                     Forms\Components\Toggle::make('enabled')
                         ->label('Aktifkan Polling SNMP')
                         ->default(false)
-                        ->helperText('Aktifkan setelah ekstensi PHP SNMP dan akses UDP 161 dipastikan tersedia.')
+                        ->helperText('Aktifkan setelah koneksi ke perangkat, izin SNMP, dan UDP 161 siap.')
                         ->columnSpanFull(),
                 ]),
         ]);
@@ -70,15 +110,26 @@ class SnmpProfilesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('id')
             ->columns([
-                Tables\Columns\TextColumn::make('auth_protocol')->label('Autentikasi')->badge(),
+                Tables\Columns\TextColumn::make('version')
+                    ->label('Versi')->badge()
+                    ->formatStateUsing(fn (string $state): string =>
+                        $state === '2c' ? 'SNMPv2c' : 'SNMPv3')
+                    ->color(fn (string $state): string =>
+                        $state === '2c' ? 'warning' : 'success'),
+                Tables\Columns\TextColumn::make('auth_protocol')
+                    ->label('Autentikasi')
+                    ->getStateUsing(fn (NetworkSnmpProfile $record): string =>
+                        $record->version === '3' ? $record->auth_protocol : 'Community'),
                 Tables\Columns\TextColumn::make('privacy_label')
-                    ->label('Privasi')->getStateUsing(fn (): string => 'AES / authPriv'),
+                    ->label('Privasi')
+                    ->getStateUsing(fn (NetworkSnmpProfile $record): string =>
+                        $record->version === '3' ? 'AES / authPriv' : 'Tidak terenkripsi'),
                 Tables\Columns\IconColumn::make('enabled')->label('Aktif')->boolean(),
                 Tables\Columns\TextColumn::make('updated_at')->label('Diperbarui')->dateTime('d/m/Y H:i'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
-                    ->label('Atur SNMPv3')
+                    ->label('Atur SNMP')
                     ->visible(fn (): bool => (auth()->user()?->can('update_device') ?? false)
                         && ! $this->getOwnerRecord()->snmpProfiles()->exists()),
             ])
@@ -87,7 +138,7 @@ class SnmpProfilesRelationManager extends RelationManager
                     ->visible(fn (): bool => auth()->user()?->can('update_device') ?? false),
             ])
             ->bulkActions([])
-            ->emptyStateHeading('SNMPv3 belum dikonfigurasi')
+            ->emptyStateHeading('SNMP belum dikonfigurasi')
             ->emptyStateDescription('Monitoring interface bersifat opsional; konfigurasi satu profil per perangkat.');
     }
 }

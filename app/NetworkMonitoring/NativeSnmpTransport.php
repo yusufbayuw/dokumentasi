@@ -7,7 +7,9 @@ use RuntimeException;
 use SNMP;
 
 /**
- * Uses the native PHP SNMP extension, not shell commands. SNMPv3 authPriv only.
+ * Uses the native PHP SNMP extension, never invoking shell commands.
+ * SNMPv3 authPriv remains the default. SNMPv2c is explicitly opt-in and
+ * must only be used on tightly controlled management networks.
  * Credentials are decrypted in memory by encrypted Eloquent casts and are
  * never passed as command-line arguments or stored in measurement records.
  */
@@ -76,28 +78,48 @@ class NativeSnmpTransport
             throw new RuntimeException('snmp_extension_missing');
         }
 
-        if (! filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            throw new RuntimeException('snmp_invalid_host');
+        if (! filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)
+            || ! app(TargetGuard::class)->allows('icmp', $host)) {
+            throw new RuntimeException('snmp_host_not_allowed');
         }
 
-        if (! in_array($profile->auth_protocol, ['SHA', 'SHA256', 'SHA512'], true)) {
-            throw new RuntimeException('snmp_auth_protocol_not_allowed');
+        if (! SnmpProtocolPolicy::canPoll($profile)) {
+            throw new RuntimeException('snmp_protocol_disabled_or_invalid');
         }
 
         $timeout = max(200000, min(2000000, (int) config('network_quality.snmp.timeout_us', 1000000)));
-        $session = new SNMP(SNMP::VERSION_3, $host, (string) $profile->security_name, $timeout, 0);
 
-        try {
-            if (! @$session->setSecurity(
-                'authPriv',
-                (string) $profile->auth_protocol,
-                (string) $profile->auth_passphrase,
-                'AES',
-                (string) $profile->privacy_passphrase
-            )) {
-                throw new RuntimeException('snmp_security_setup_failed');
+        if ($profile->version === '2c') {
+            // PHP 8.1 native extension: SNMP::VERSION_2C (capital C).
+            // Community never appears on a command line, URL, response or log.
+            // v2c traffic is not encrypted; restrict devices to a management VLAN.
+            $session = new SNMP(SNMP::VERSION_2C, $host, (string) $profile->community, $timeout, 0);
+        } elseif ($profile->version === '3') {
+            if (! in_array($profile->auth_protocol, ['SHA', 'SHA256', 'SHA512'], true)) {
+                throw new RuntimeException('snmp_auth_protocol_not_allowed');
             }
 
+            $session = new SNMP(SNMP::VERSION_3, $host, (string) $profile->security_name, $timeout, 0);
+
+            try {
+                if (! @$session->setSecurity(
+                    'authPriv',
+                    (string) $profile->auth_protocol,
+                    (string) $profile->auth_passphrase,
+                    'AES',
+                    (string) $profile->privacy_passphrase
+                )) {
+                    throw new RuntimeException('snmp_security_setup_failed');
+                }
+            } catch (\Throwable $error) {
+                $session->close();
+                throw $error;
+            }
+        } else {
+            throw new RuntimeException('snmp_version_not_supported');
+        }
+
+        try {
             $session->valueretrieval = SNMP_VALUE_PLAIN;
             $session->oid_output_format = SNMP_OID_OUTPUT_NUMERIC;
 

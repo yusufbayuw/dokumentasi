@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Models\DeviceInterface;
 use App\Models\NetworkInterfaceSample;
 use App\Models\NetworkSnmpProfile;
+use App\NetworkMonitoring\SnmpProtocolPolicy;
 use Illuminate\Support\Collection;
 use Throwable;
 
@@ -39,7 +40,7 @@ class SnmpInterfacePoller
         }
 
         $profile = $device->snmpProfile;
-        if (! $profile?->enabled) {
+        if (! SnmpProtocolPolicy::canPoll($profile)) {
             return;
         }
 
@@ -150,6 +151,7 @@ class SnmpInterfacePoller
             $speed = $result['speed_mbps'] ?: $interface->speed_mbps;
 
             $previous = NetworkInterfaceSample::query()
+                ->where('snmp_version', $profile->version)
                 ->where('device_interface_id', $interface->id)
                 ->where('snmp_if_index', $index)
                 ->orderByDesc('checked_at')
@@ -165,6 +167,7 @@ class SnmpInterfacePoller
                 'device_interface_id' => $interface->id,
                 'interface_name' => $interface->name,
                 'snmp_if_index' => $index,
+                'snmp_version' => $profile->version,
                 'status' => $status,
                 'in_octets' => $result['in_octets'],
                 'out_octets' => $result['out_octets'],
@@ -188,6 +191,7 @@ class SnmpInterfacePoller
             'device_interface_id' => $interface->id,
             'interface_name' => $interface->name,
             'snmp_if_index' => $interface->snmp_if_index,
+            'snmp_version' => $device->snmpProfile?->version ?? '3',
             'status' => 'unknown',
             'error_code' => $code,
             'checked_at' => now(),

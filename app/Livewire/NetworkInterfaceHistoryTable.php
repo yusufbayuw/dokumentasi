@@ -43,6 +43,10 @@ class NetworkInterfaceHistoryTable extends Component implements HasForms, HasTab
             ->columns([
                 Tables\Columns\TextColumn::make('checked_at')
                     ->label('Waktu')->dateTime('d/m/Y H:i:s')->sortable(),
+                Tables\Columns\TextColumn::make('snmp_version')
+                    ->label('Versi')->badge()
+                    ->formatStateUsing(fn (string $state): string =>
+                        $state === '2c' ? 'SNMPv2c' : 'SNMPv3'),
                 Tables\Columns\TextColumn::make('status')->label('Port')->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'up' => 'success', 'down' => 'danger', default => 'gray',

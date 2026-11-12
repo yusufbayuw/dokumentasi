@@ -11,6 +11,9 @@ return [
     // Phase 4: SNMPv3 interface statistics. Explicit opt-in, separate from ICMP.
     'snmp' => [
         'enabled' => (bool) env('NETWORK_QUALITY_SNMP_ENABLED', false),
+        // SNMPv2c transmits community strings without encryption.
+        // It requires explicit administrator opt-in in addition to SNMP.
+        'v2c_enabled' => (bool) env('NETWORK_QUALITY_SNMP_V2C_ENABLED', false),
         'interval_minutes' => max(1, min(60, (int) env('NETWORK_QUALITY_SNMP_INTERVAL_MINUTES', 5))),
         'max_devices_per_cycle' => max(1, min(100, (int) env('NETWORK_QUALITY_SNMP_MAX_DEVICES', 10))),
         'max_interfaces_per_device' => max(1, min(48, (int) env('NETWORK_QUALITY_SNMP_MAX_INTERFACES', 16))),
