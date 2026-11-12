@@ -4,6 +4,7 @@ namespace App\Console;
 
 use App\Jobs\PingIpAddress;
 use App\Jobs\DispatchNetworkQuality;
+use App\Jobs\DispatchSnmpPolling;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\RestartFingerprintDevice;
 use App\Support\FingerprintQueue;
@@ -40,11 +41,25 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping(5)
             ->when(fn (): bool => (bool) config('network_quality.enabled', false));
 
+        $schedule->job(new DispatchSnmpPolling(), 'network-quality')
+            ->everyMinute()
+            ->name('monitor-network-snmp')
+            ->withoutOverlapping(5)
+            ->when(fn (): bool => (bool) config('network_quality.enabled', false)
+                && (bool) config('network_quality.snmp.enabled', false));
+
         $schedule->call(function (): void {
             $days = max(7, (int) config('network_quality.retention_days', 14));
             DB::table('network_quality_measurements')
                 ->where('checked_at', '<', now()->subDays($days))
                 ->delete();
+
+            // Retain new SNMP samples on the same bounded history window.
+            if (config('network_quality.snmp.enabled', false)) {
+                DB::table('network_interface_samples')
+                    ->where('checked_at', '<', now()->subDays($days))
+                    ->delete();
+            }
         })
             ->name('prune-network-quality')
             ->dailyAt('02:35')

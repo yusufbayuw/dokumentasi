@@ -36,6 +36,11 @@ class InterfacesRelationManager extends RelationManager
                 ])
                 ->default('ethernet')
                 ->required(),
+            Forms\Components\TextInput::make('snmp_if_index')
+                ->label('ifIndex SNMP')
+                ->numeric()->minValue(1)->maxValue(10000000)
+                ->helperText('Nomor port SNMP. Terisi otomatis jika nama interface sama dengan ifName pada perangkat; boleh diisi manual.')
+                ->visible(fn (): bool => config('network_quality.snmp.enabled', false)),
             Forms\Components\TextInput::make('mac_address')
                 ->label('MAC Address')
                 ->placeholder('AA:BB:CC:DD:EE:FF')
@@ -92,6 +97,10 @@ class InterfacesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('interface_type')
                     ->label('Tipe')
                     ->badge(),
+                Tables\Columns\TextColumn::make('snmp_if_index')
+                    ->label('SNMP ifIndex')->placeholder('-')
+                    ->visible(fn (): bool => config('network_quality.snmp.enabled', false))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('ipAddress.nama')
                     ->label('IP')
                     ->placeholder('-'),

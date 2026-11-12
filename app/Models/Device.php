@@ -77,6 +77,22 @@ class Device extends Model
             ->latestOfMany();
     }
 
+    public function snmpProfile(): HasOne
+    {
+        return $this->hasOne(NetworkSnmpProfile::class);
+    }
+
+    public function snmpProfiles(): HasMany
+    {
+        // Relation manager expects HasMany. DB enforces one profile per device.
+        return $this->hasMany(NetworkSnmpProfile::class);
+    }
+
+    public function interfaceSamples(): HasMany
+    {
+        return $this->hasMany(NetworkInterfaceSample::class);
+    }
+
     public function credentials(): HasMany
     {
         return $this->hasMany(DeviceCredential::class, 'device_id', 'id');
