@@ -385,3 +385,25 @@ database storage, queue processing time and retention costs. Old
 snapshots and their encrypted OIDs are deleted together by retention.
 To stop collection, set NETWORK_QUALITY_SNMP_ENABLED=false, refresh
 config cache and restart the worker.
+
+
+## CSS326 / SwOS v2.18: SNMP snapshot stops after sysDescr
+
+The MikroTik CSS326 with SwOS 2.18 supports SNMPv2c GETNEXT and
+GETBULK per MikroTik documentation. If the snapshot contains just
+sysDescr (OID 1.3.6.1.2.1.1.1.0) and snmp_getnext_failed, this proves
+some data was retrieved but NOT that all supported MIBs were collected.
+
+SNMPv2c snapshots now prefer bounded GETBULK: 8 OIDs per request and
+30 per continuation job by default. Native PHP GETNEXT remains a fallback
+for devices that do not implement GETBULK. A switch is never altered.
+
+- GETBULK is on when v2c is on, unless
+  NETWORK_QUALITY_SNMP_V2C_BULK_ENABLED=false.
+- After deploy, choose one switch in Infrastruktur > Data SNMP
+  Perangkat and use Ambil Semua OID. Check counts, status and diagnostic.
+- Distinct diagnostic codes identify GETBULK timeout/agent error and
+  native GETNEXT timeout/agent error, if both fail.
+- If a partial capture persists, compare with Net-SNMP snmpbulkwalk
+  locally on the trusted monitoring host. Do not share community strings.
+- SNMPv3 authPriv operation remains unchanged. No new Cron/worker needed.
