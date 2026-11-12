@@ -13,6 +13,24 @@ class NetworkIncidentRules
      * @param Collection<int, \App\Models\NetworkQualityMeasurement> $latest
      * @return array{action:string,kind?:string,severity?:string}|null
      */
+    /**
+     * A resolved incident reopens only after all triggering samples are newer
+     * than its resolution. This avoids relaunching on the same cached history.
+     *
+     * @param Collection<int, \App\Models\NetworkQualityMeasurement> $latest
+     */
+    public function canReopen(Collection $latest, ?\DateTimeInterface $resolvedAt): bool
+    {
+        if ($latest->isEmpty()) {
+            return false;
+        }
+
+        $oldest = $latest->last()?->checked_at;
+
+        return $oldest !== null
+            && ($resolvedAt === null || $oldest->getTimestamp() > $resolvedAt->getTimestamp());
+    }
+
     public function decide(Collection $latest): ?array
     {
         $toOpen = (int) config('network_quality.incidents.bad_samples_to_open', 3);

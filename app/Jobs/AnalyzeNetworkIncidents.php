@@ -99,6 +99,13 @@ class AnalyzeNetworkIncidents implements ShouldQueue
                     ]);
                     $shouldNotify = true;
                 } elseif ($incident->status === 'resolved') {
+                    // Do not reopen a manually resolved incident with old bad
+                    // measurements. All consecutive triggering samples must
+                    // have been collected AFTER the previous resolution.
+                    if (! app(NetworkIncidentRules::class)->canReopen($latest, $incident->resolved_at)) {
+                        return null;
+                    }
+
                     $incident->update([
                         'kind' => $decision['kind'],
                         'severity' => $decision['severity'],

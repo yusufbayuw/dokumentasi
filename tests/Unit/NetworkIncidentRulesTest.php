@@ -16,6 +16,25 @@ class NetworkIncidentRulesTest extends TestCase
             ->forceFill(['status' => $value[0], 'quality' => $value[1]]));
     }
 
+    public function test_reopen_requires_fresh_consecutive_samples_after_resolution(): void
+    {
+        $rules = app(NetworkIncidentRules::class);
+        $resolvedAt = \Carbon\Carbon::parse('2026-11-12 10:00:00');
+
+        $old = $this->checks([['down', 'bad'], ['down', 'bad'], ['down', 'bad']]);
+        foreach ($old as $i => $measurement) {
+            $measurement->checked_at = $resolvedAt->copy()->subSeconds(10 + $i);
+        }
+
+        $this->assertFalse($rules->canReopen($old, $resolvedAt));
+
+        foreach ($old as $i => $measurement) {
+            $measurement->checked_at = $resolvedAt->copy()->addSeconds(10 - $i);
+        }
+
+        $this->assertTrue($rules->canReopen($old, $resolvedAt));
+    }
+
     public function test_one_bad_sample_does_not_open_an_incident(): void
     {
         $this->assertNull(app(NetworkIncidentRules::class)->decide(
