@@ -30,6 +30,8 @@ class DispatchSnmpPolling implements ShouldQueue
 
         NetworkSnmpProfile::query()
             ->where('enabled', true)
+            ->when(! config('network_quality.snmp.v2c_enabled', false),
+                fn ($query) => $query->where('version', '3'))
             ->whereHas('device', fn ($q) => $q->where('monitoring_enabled', true)
                 ->whereNotIn('lifecycle_status', ['retired', 'disposed']))
             ->orderBy('id')
