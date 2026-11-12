@@ -8,6 +8,31 @@ return [
     'timeout_seconds' => max(1, min(5, (int) env('NETWORK_QUALITY_TIMEOUT', 2))),
     'retention_days' => max(7, (int) env('NETWORK_QUALITY_RETENTION_DAYS', 14)),
     'max_jobs_per_cycle' => max(1, min(2000, (int) env('NETWORK_QUALITY_MAX_JOBS', 500))),
+    // Phase 4: SNMPv3 interface statistics. Explicit opt-in, separate from ICMP.
+    'snmp' => [
+        'enabled' => (bool) env('NETWORK_QUALITY_SNMP_ENABLED', false),
+        'interval_minutes' => max(1, min(60, (int) env('NETWORK_QUALITY_SNMP_INTERVAL_MINUTES', 5))),
+        'max_devices_per_cycle' => max(1, min(100, (int) env('NETWORK_QUALITY_SNMP_MAX_DEVICES', 10))),
+        'max_interfaces_per_device' => max(1, min(48, (int) env('NETWORK_QUALITY_SNMP_MAX_INTERFACES', 16))),
+        'timeout_us' => max(200000, min(2000000, (int) env('NETWORK_QUALITY_SNMP_TIMEOUT_US', 1000000))),
+    ],
+    // Phase 5: registered remote probes, disabled until explicitly provisioned.
+    'remote' => [
+        'enabled' => (bool) env('NETWORK_QUALITY_REMOTE_ENABLED', false),
+        'max_skew_seconds' => max(30, min(600, (int) env('NETWORK_QUALITY_REMOTE_MAX_SKEW', 300))),
+    ],
+    // Phase 6: incident and sample-based availability analysis (not contractual SLA).
+    'incidents' => [
+        'enabled' => (bool) env('NETWORK_QUALITY_INCIDENTS_ENABLED', false),
+        'bad_samples_to_open' => max(2, min(10, (int) env('NETWORK_QUALITY_BAD_SAMPLES', 3))),
+        'good_samples_to_resolve' => max(2, min(10, (int) env('NETWORK_QUALITY_GOOD_SAMPLES', 2))),
+        'analysis_window_minutes' => max(15, min(240, (int) env('NETWORK_QUALITY_ANALYSIS_WINDOW', 60))),
+        'max_monitors_per_cycle' => max(1, min(2000, (int) env('NETWORK_QUALITY_ANALYSIS_MAX_MONITORS', 500))),
+        'alerts_enabled' => (bool) env('NETWORK_QUALITY_ALERTS_ENABLED', false),
+        'alert_emails' => array_values(array_filter(array_map(
+            'trim', explode(',', (string) env('NETWORK_QUALITY_ALERT_EMAILS', ''))
+        ))),
+    ],
     'quality' => [
         'loss_degraded_pct' => 1.0,
         'loss_bad_pct' => 5.0,
